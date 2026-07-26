@@ -97,6 +97,7 @@ const STR = {
     defaultTeam2: "الفريق الثاني",
     customizeQuestions: "الأسئلة والصفات (اختياري: عدّلها قبل البدء)",
     newQuestion: "سؤال جديد",
+    questionFor: (name) => `السؤال لـ ${name}`,
   },
   en: {
     title: "Who's Who?",
@@ -153,6 +154,7 @@ const STR = {
     defaultTeam2: "Team 2",
     customizeQuestions: "Questions & Attributes (optional: edit before starting)",
     newQuestion: "New Question",
+    questionFor: (name) => `Question for ${name}`,
   },
 };
 
@@ -248,7 +250,12 @@ function WhosWho() {
     const items = [];
     players.forEach((p) => {
       QUESTIONS.forEach((q, idx) => {
-        if (p[q.key] && p[q.key].trim()) items.push({ player: p, attrLabel: qLabels[lang][idx], value: p[q.key] });
+        if (p[q.key] && p[q.key].trim()) items.push({
+          player: p,
+          attrLabel: qLabels[lang][idx],
+          value: p[q.key],
+          askedTeam: p.team === 1 ? 2 : 1,
+        });
       });
     });
     return shuffle(items);
@@ -552,7 +559,7 @@ function WhosWho() {
 
         {/* ROUND 1 & 2 */}
         {(screen === "round1" || screen === "round2") && (
-          <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+          <div className="flex-1 flex flex-col px-5 py-6 gap-4">
             <div className="text-center text-xs font-bold opacity-50">
               {screen === "round1" ? t.guessingLabel : t.triviaLabel} · {deck.length ? deckIdx + 1 : 0} / {deck.length}
             </div>
@@ -560,6 +567,10 @@ function WhosWho() {
               <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">{t.noQuestions}</div>
             ) : (
               <>
+                <div className="rounded-2xl px-4 py-3 text-center font-black text-sm" style={{ background: TEAM_META[deck[deckIdx].askedTeam].bg, color: TEAM_META[deck[deckIdx].askedTeam].color }}>
+                  {t.questionFor(teamNames[deck[deckIdx].askedTeam])}
+                </div>
+
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-full rounded-3xl p-8 text-center card-shadow flip-in" style={{ background: "#181B2A", minHeight: 220 }} key={deckIdx}>
                     {screen === "round1" ? (
@@ -593,14 +604,19 @@ function WhosWho() {
                     )}
                   </div>
                 </div>
+
                 <div className="text-center text-xs font-bold opacity-40 mb-1">{t.countdownNote}</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => { award({ 1: 1 }); nextCard(); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{teamNames[1]} {t.correct}</button>
-                  <button onClick={() => { award({ 2: 1 }); nextCard(); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{teamNames[2]} {t.correct}</button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => { award({ 1: 1, 2: 1 }); nextCard(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.bothCorrect}</button>
-                  <button onClick={() => nextCard()} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                  <button
+                    onClick={() => { award({ [deck[deckIdx].askedTeam]: 1 }); nextCard(); }}
+                    className="py-3 rounded-xl font-bold active:scale-95"
+                    style={{ background: TEAM_META[deck[deckIdx].askedTeam].bg, color: TEAM_META[deck[deckIdx].askedTeam].color }}
+                  >
+                    {teamNames[deck[deckIdx].askedTeam]} {t.correct}
+                  </button>
+                  <button onClick={() => nextCard()} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+                    {t.skipNoPoints}
+                  </button>
                 </div>
               </>
             )}
