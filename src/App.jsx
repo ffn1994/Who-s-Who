@@ -14,10 +14,10 @@ const OPEN_QUESTIONS = [
 const MAX_PHOTOS = 3;
 
 const FACEOFF_QUESTIONS = [
-  { ar: "احكِ موقف زلقت أو وقعت فيه قدام ناس 😬", en: "Tell us about a time you slipped or fell in front of people 😬" },
-  { ar: "احكِ مرة اتصلت بغلط شخص وكلمته فترة 📞", en: "Tell us about a time you called the wrong person and talked to them for a while 📞" },
-  { ar: "احكِ مرة خوّفوك بطريقة ما توقعتها 😱", en: "Tell us about a time someone scared you in a totally unexpected way 😱" },
-  { ar: "شنو أحرج موقف صار لك قدام أهلك أو كبار؟ 😳", en: "What's the most embarrassing thing that happened to you in front of family or elders? 😳" },
+  { ar: "قولنا موقف زلقت أو طحت قدام الناس — مضحك! 😬", en: "Tell us about a time you slipped or fell in front of people — make it funny! 😬" },
+  { ar: "قولنا موقف دقيت على شخص بالغلط من زمان وتوهقت 📞", en: "Tell us about a time you accidentally called someone from long ago and got caught 📞" },
+  { ar: "قولنا موقف مضحك — واحد خوّفك أو من حيوان 😱", en: "Tell us a funny story — someone scared you or an animal incident 😱" },
+  { ar: "قولنا أحرج موقف صار لك قدام الناس 😳", en: "Tell us your most embarrassing moment in front of people 😳" },
   { ar: "سوِّ أي شي يضحك الفريق اللي ضدك! 🤣", en: "Do anything to make the opposing team laugh! 🤣" },
   { ar: "مكاسر باليد 💪 — أقوى واحد من كل فريق يتواجهون!", en: "Arm wrestling 💪 — strongest one from each team face off!" },
   { ar: "مكاسر بالإصبع 👆 — مواجهة بين الفريقين!", en: "Finger wrestling 👆 — teams face off!" },
@@ -31,7 +31,7 @@ const FACEOFF_QUESTIONS = [
   { ar: "اقلب السؤال! الفريق الثاني هو اللي يجاوب الحين 🔄", en: "Flip it! The opposing team answers this one 🔄" },
   { ar: "قول جملة طويلة بنفس واحد بدون توقف 🌬️", en: "Say a long sentence in one breath without stopping 🌬️" },
   { ar: "اشرح شي لفريقك بدون كلام وهم يخمنون 🙊", en: "Explain something to your team without words — they guess 🙊" },
-  { ar: "حاكي الناس بدون صوت — بس الشفايف! 👄", en: "Lip sync only — no sound, just lips! 👄" },
+  { ar: "واحد من فريقك يلبس سماعات وانت تقوله كلمة — لازم يعرفها! 🎧", en: "Someone from your team puts on headphones — say a word and they have to guess it! 🎧" },
   { ar: "حجرة ورقة مقص ✊📄✂️ — الفايز ياخذ النقاط!", en: "Rock Paper Scissors ✊📄✂️ — winner takes the points!" },
 ];
 
