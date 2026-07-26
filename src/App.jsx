@@ -13,6 +13,29 @@ const OPEN_QUESTIONS = [
 ];
 const MAX_PHOTOS = 3;
 
+const FACEOFF_QUESTIONS = [
+  { ar: "شنو أسوأ هدية استلمتها؟", en: "What's the worst gift you've ever received?" },
+  { ar: "لو تعيش بلد ثاني غير بلدك، وين؟", en: "If you had to live in another country, where?" },
+  { ar: "شنو أغرب شي أكلته؟", en: "What's the strangest thing you've ever eaten?" },
+  { ar: "لو تغير اسمك، شنو تسويه؟", en: "If you could change your name, what would it be?" },
+  { ar: "شنو أول شي تشتريه لو ربحت مليون؟", en: "What's the first thing you'd buy if you won a million?" },
+  { ar: "شنو أكثر شي تكره تسويه بس مجبور؟", en: "What's something you hate doing but have to?" },
+  { ar: "لو تقدر تتكلم لغة ثانية فجأة، أي لغة؟", en: "If you could suddenly speak another language, which one?" },
+  { ar: "شنو أضحك كذبة قلتها؟", en: "What's the funniest lie you've ever told?" },
+  { ar: "لو تلتقي أي شخص في التاريخ، مين؟", en: "If you could meet anyone in history, who?" },
+  { ar: "لو عندك قدرة خارقة، شنو تختار؟", en: "If you had a superpower, what would you choose?" },
+  { ar: "شنو أكثر شي تندم عليه من طفولتك؟", en: "What do you regret most from your childhood?" },
+  { ar: "لو تعيش في فيلم، أي فيلم؟", en: "If you had to live inside a movie, which one?" },
+  { ar: "شنو آخر شي خوّفك؟", en: "What's the last thing that scared you?" },
+  { ar: "شنو أكثر تطبيق تفتحه على جوالك؟", en: "What app do you open the most on your phone?" },
+  { ar: "لو ما فيه انترنت لأسبوع، شنو تسوي؟", en: "If there was no internet for a week, what would you do?" },
+  { ar: "شنو أضحك موقف صار لك مع حيوان؟", en: "What's the funniest situation you've had with an animal?" },
+  { ar: "لو تغير مهنتك لأي مهنة، شنو تختار؟", en: "If you could switch to any career, what would you choose?" },
+  { ar: "شنو أغرب حلم شفته؟", en: "What's the strangest dream you've ever had?" },
+  { ar: "لو تاخذ إجازة شهر كامل، وين تروح؟", en: "If you had a full month off, where would you go?" },
+  { ar: "شنو أكثر شي يضحكك لو فكرت فيه؟", en: "What's something that always makes you laugh when you think about it?" },
+];
+
 const TEAM_META = {
   1: { color: "#E8A33D", bg: "#3A2E17" },
   2: { color: "#3DB8A8", bg: "#123330" },
@@ -73,6 +96,7 @@ const STR = {
     defaultTeam1: "الفريق الأول",
     defaultTeam2: "الفريق الثاني",
     customizeQuestions: "الأسئلة والصفات (اختياري: عدّلها قبل البدء)",
+    newQuestion: "سؤال جديد",
   },
   en: {
     title: "Who's Who?",
@@ -128,6 +152,7 @@ const STR = {
     defaultTeam1: "Team 1",
     defaultTeam2: "Team 2",
     customizeQuestions: "Questions & Attributes (optional: edit before starting)",
+    newQuestion: "New Question",
   },
 };
 
@@ -172,6 +197,7 @@ function WhosWho() {
   const [faceoffOrder, setFaceoffOrder] = useState([]);
   const [faceoffPairIdx, setFaceoffPairIdx] = useState(0);
   const [faceoffRevealed, setFaceoffRevealed] = useState({});
+  const [faceoffLiveQIdx, setFaceoffLiveQIdx] = useState(0);
 
   function startRegistration() {
     const q = [];
@@ -247,7 +273,16 @@ function WhosWho() {
     setFaceoffOrder(pairs);
     setFaceoffPairIdx(0);
     setFaceoffRevealed({});
+    setFaceoffLiveQIdx(Math.floor(Math.random() * FACEOFF_QUESTIONS.length));
     setScreen("round3");
+  }
+
+  function nextFaceoffQ() {
+    setFaceoffLiveQIdx((idx) => {
+      let next = Math.floor(Math.random() * FACEOFF_QUESTIONS.length);
+      if (next === idx) next = (idx + 1) % FACEOFF_QUESTIONS.length;
+      return next;
+    });
   }
 
   function award(points) {
@@ -608,44 +643,42 @@ function WhosWho() {
           </div>
         )}
 
-        {/* ROUND 3 - face off */}
+        {/* ROUND 3 - live face off */}
         {screen === "round3" && (
-          <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+          <div className="flex-1 flex flex-col px-5 py-6 gap-4">
             <div className="text-center text-xs font-bold opacity-50">{t.faceoffLabel} · {faceoffOrder.length ? faceoffPairIdx + 1 : 0} / {faceoffOrder.length}</div>
             {faceoffOrder.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">{t.needOneEach}</div>
             ) : (
               <>
-                <div className="flex-1 flex flex-col gap-4">
-                  {faceoffOrder[faceoffPairIdx].map((p, idx) => {
-                    const team = p.team;
-                    const rkey = `${faceoffPairIdx}-${idx}`;
-                    const isOpen = !!faceoffRevealed[rkey];
-                    return (
-                      <div key={p.id} className="rounded-2xl p-5 card-shadow" style={{ background: TEAM_META[team].bg }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="font-black text-xl" style={{ color: TEAM_META[team].color }}>{p.name}</div>
-                          <button onClick={() => setFaceoffRevealed((r) => ({ ...r, [rkey]: !r[rkey] }))} className="p-2 rounded-lg active:scale-95" style={{ background: "rgba(0,0,0,0.25)" }}>
-                            {isOpen ? <span style={{fontSize:18}}>🙈</span> : <span style={{fontSize:18}}>👁️</span>}
-                          </button>
-                        </div>
-                        {isOpen && (
-                          <div className="flex flex-col gap-1.5 text-sm mt-2 flip-in">
-                            <div><span className="opacity-60">{openQLabels[lang][0]}:</span> {p.wish || "—"}</div>
-                            <div><span className="opacity-60">{openQLabels[lang][1]}:</span> {p.funny || "—"}</div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="flex gap-3">
+                  {faceoffOrder[faceoffPairIdx].map((p) => (
+                    <div key={p.id} className="flex-1 rounded-2xl p-4 text-center card-shadow" style={{ background: TEAM_META[p.team].bg }}>
+                      <div className="font-black text-lg" style={{ color: TEAM_META[p.team].color }}>{p.name}</div>
+                      <div className="text-xs opacity-50 mt-0.5">{teamNames[p.team]}</div>
+                    </div>
+                  ))}
                 </div>
+
+                <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                  <div className="w-full rounded-3xl p-7 text-center card-shadow flip-in" style={{ background: "#181B2A" }} key={faceoffLiveQIdx}>
+                    <div className="text-xs font-bold opacity-40 mb-4">{t.faceoffLabel}</div>
+                    <div className="text-xl font-black leading-relaxed" style={{ color: "#F2EDE3" }}>
+                      {FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}
+                    </div>
+                  </div>
+                  <button onClick={nextFaceoffQ} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
+                    <span style={{fontSize:16}}>🔀</span> {t.newQuestion}
+                  </button>
+                </div>
+
                 <div className="text-center text-xs font-bold opacity-40">{t.faceoffWinnerPoints}</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => { award({ 1: 3 }); const ni = faceoffPairIdx + 1; setFaceoffRevealed({}); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{t.win(teamNames[1])}</button>
-                  <button onClick={() => { award({ 2: 3 }); const ni = faceoffPairIdx + 1; setFaceoffRevealed({}); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{t.win(teamNames[2])}</button>
+                  <button onClick={() => { award({ 1: 3 }); const ni = faceoffPairIdx + 1; nextFaceoffQ(); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{t.win(teamNames[1])}</button>
+                  <button onClick={() => { award({ 2: 3 }); const ni = faceoffPairIdx + 1; nextFaceoffQ(); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{t.win(teamNames[2])}</button>
                 </div>
                 {faceoffPairIdx + 1 < faceoffOrder.length ? (
-                  <button onClick={() => { setFaceoffPairIdx((i) => i + 1); setFaceoffRevealed({}); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                  <button onClick={() => { setFaceoffPairIdx((i) => i + 1); nextFaceoffQ(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
                 ) : (
                   <button onClick={() => setScreen("rounds")} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.endRound}</button>
                 )}
