@@ -72,6 +72,7 @@ const STR = {
     newGame: "لعبة جديدة",
     defaultTeam1: "الفريق الأول",
     defaultTeam2: "الفريق الثاني",
+    customizeQuestions: "الأسئلة والصفات (اختياري: عدّلها قبل البدء)",
   },
   en: {
     title: "Who's Who?",
@@ -126,8 +127,12 @@ const STR = {
     newGame: "New Game",
     defaultTeam1: "Team 1",
     defaultTeam2: "Team 2",
+    customizeQuestions: "Questions & Attributes (optional: edit before starting)",
   },
 };
+
+const defaultQLabels = (l) => QUESTIONS.map((q) => q[l]);
+const defaultOpenQLabels = (l) => OPEN_QUESTIONS.map((q) => q[l]);
 
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -151,6 +156,8 @@ function WhosWho() {
 
   const [screen, setScreen] = useState("counts"); // counts | pass | collecting | rounds | round1 | round2 | round3 | round4 | final
   const [teamNames, setTeamNames] = useState({ 1: STR.ar.defaultTeam1, 2: STR.ar.defaultTeam2 });
+  const [qLabels, setQLabels] = useState({ ar: defaultQLabels("ar"), en: defaultQLabels("en") });
+  const [openQLabels, setOpenQLabels] = useState({ ar: defaultOpenQLabels("ar"), en: defaultOpenQLabels("en") });
   const [counts, setCounts] = useState({ 1: 2, 2: 2 });
   const [queue, setQueue] = useState([]); // [{team, orderInTeam}]
   const [qIdx, setQIdx] = useState(0);
@@ -214,8 +221,8 @@ function WhosWho() {
   function buildDeck() {
     const items = [];
     players.forEach((p) => {
-      QUESTIONS.forEach((q) => {
-        if (p[q.key] && p[q.key].trim()) items.push({ player: p, attrLabel: q[lang], value: p[q.key] });
+      QUESTIONS.forEach((q, idx) => {
+        if (p[q.key] && p[q.key].trim()) items.push({ player: p, attrLabel: qLabels[lang][idx], value: p[q.key] });
       });
     });
     return shuffle(items);
@@ -341,6 +348,36 @@ function WhosWho() {
               </div>
             ))}
 
+            <div className="rounded-2xl p-4 card-shadow flex flex-col gap-2" style={{ background: "#181B2A" }}>
+              <div className="text-xs font-bold opacity-50 mb-1">{t.customizeQuestions}</div>
+              {QUESTIONS.map((q, i) => (
+                <input
+                  key={q.key}
+                  value={qLabels[lang][i]}
+                  onChange={(e) => {
+                    const next = [...qLabels[lang]];
+                    next[i] = e.target.value;
+                    setQLabels((prev) => ({ ...prev, [lang]: next }));
+                  }}
+                  className="rounded-xl px-3 py-2 text-sm"
+                  style={{ background: "#12141F" }}
+                />
+              ))}
+              {OPEN_QUESTIONS.map((q, i) => (
+                <input
+                  key={q.key}
+                  value={openQLabels[lang][i]}
+                  onChange={(e) => {
+                    const next = [...openQLabels[lang]];
+                    next[i] = e.target.value;
+                    setOpenQLabels((prev) => ({ ...prev, [lang]: next }));
+                  }}
+                  className="rounded-xl px-3 py-2 text-sm"
+                  style={{ background: "#12141F" }}
+                />
+              ))}
+            </div>
+
             <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
               {t.startRegistration}
             </button>
@@ -383,10 +420,10 @@ function WhosWho() {
             />
 
             <div className="grid grid-cols-2 gap-2">
-              {QUESTIONS.map((q) => (
+              {QUESTIONS.map((q, i) => (
                 <input
                   key={q.key}
-                  placeholder={q[lang]}
+                  placeholder={qLabels[lang][i]}
                   value={draft[q.key]}
                   onChange={(e) => updateDraft(q.key, e.target.value)}
                   className="rounded-xl px-3 py-2.5 text-sm placeholder-white/25"
@@ -395,10 +432,10 @@ function WhosWho() {
               ))}
             </div>
 
-            {OPEN_QUESTIONS.map((q) => (
+            {OPEN_QUESTIONS.map((q, i) => (
               <input
                 key={q.key}
-                placeholder={q[lang]}
+                placeholder={openQLabels[lang][i]}
                 value={draft[q.key]}
                 onChange={(e) => updateDraft(q.key, e.target.value)}
                 className="rounded-xl px-3 py-2.5 text-sm placeholder-white/25"
@@ -594,8 +631,8 @@ function WhosWho() {
                         </div>
                         {isOpen && (
                           <div className="flex flex-col gap-1.5 text-sm mt-2 flip-in">
-                            <div><span className="opacity-60">{OPEN_QUESTIONS[0][lang]}:</span> {p.wish || "—"}</div>
-                            <div><span className="opacity-60">{OPEN_QUESTIONS[1][lang]}:</span> {p.funny || "—"}</div>
+                            <div><span className="opacity-60">{openQLabels[lang][0]}:</span> {p.wish || "—"}</div>
+                            <div><span className="opacity-60">{openQLabels[lang][1]}:</span> {p.funny || "—"}</div>
                           </div>
                         )}
                       </div>
