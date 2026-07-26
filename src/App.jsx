@@ -150,7 +150,7 @@ function WhosWho() {
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const [screen, setScreen] = useState("counts"); // counts | pass | collecting | rounds | round1 | round2 | round3 | round4 | final
-  const [teamNames, setTeamNames] = useState({ 1: "الفريق الأول", 2: "الفريق الثاني" });
+  const [teamNames, setTeamNames] = useState({ 1: STR.ar.defaultTeam1, 2: STR.ar.defaultTeam2 });
   const [counts, setCounts] = useState({ 1: 2, 2: 2 });
   const [queue, setQueue] = useState([]); // [{team, orderInTeam}]
   const [qIdx, setQIdx] = useState(0);
@@ -253,6 +253,7 @@ function WhosWho() {
   function resetGame() {
     setScreen("counts");
     setCounts({ 1: 2, 2: 2 });
+    setTeamNames({ 1: t.defaultTeam1, 2: t.defaultTeam2 });
     setPlayers([]);
     setQueue([]);
     setQIdx(0);
@@ -278,7 +279,14 @@ function WhosWho() {
       `}</style>
 
       <button
-        onClick={() => setLang((l) => (l === "ar" ? "en" : "ar"))}
+        onClick={() => setLang((l) => {
+          const newLang = l === "ar" ? "en" : "ar";
+          setTeamNames((prev) => ({
+            1: prev[1] === STR[l].defaultTeam1 ? STR[newLang].defaultTeam1 : prev[1],
+            2: prev[2] === STR[l].defaultTeam2 ? STR[newLang].defaultTeam2 : prev[2],
+          }));
+          return newLang;
+        })}
         className="active:scale-95"
         style={{ position: "fixed", top: 12, insetInlineEnd: 12, zIndex: 50, background: "#1C1F30", color: "#E8A33D", fontWeight: 900, fontSize: 12, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
       >
