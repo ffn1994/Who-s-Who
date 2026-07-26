@@ -98,6 +98,10 @@ const STR = {
     customizeQuestions: "الأسئلة والصفات (اختياري: عدّلها قبل البدء)",
     newQuestion: "سؤال جديد",
     questionFor: (name) => `السؤال لـ ${name}`,
+    faceoffInstruction: "احكِ موقفاً مضحكاً أو أي شي تختاره",
+    faceoffChallenge: (name) => `${name} يحاولون ما يتفاعلون`,
+    reacted: (name) => `${name} تفاعلوا! 😂`,
+    noReaction: (name) => `${name} صمدوا 😐`,
   },
   en: {
     title: "Who's Who?",
@@ -155,6 +159,10 @@ const STR = {
     customizeQuestions: "Questions & Attributes (optional: edit before starting)",
     newQuestion: "New Question",
     questionFor: (name) => `Question for ${name}`,
+    faceoffInstruction: "Tell a funny story or whatever you choose",
+    faceoffChallenge: (name) => `${name} try not to react`,
+    reacted: (name) => `${name} reacted! 😂`,
+    noReaction: (name) => `${name} held it together 😐`,
   },
 };
 
@@ -274,12 +282,15 @@ function WhosWho() {
   function startRound3() {
     const t1 = shuffle(players.filter((p) => p.team === 1));
     const t2 = shuffle(players.filter((p) => p.team === 2));
-    const n = Math.min(t1.length, t2.length);
-    const pairs = [];
-    for (let i = 0; i < n; i++) pairs.push([t1[i], t2[i]]);
-    setFaceoffOrder(pairs);
+    if (!t1.length || !t2.length) { setFaceoffOrder([]); setFaceoffPairIdx(0); setScreen("round3"); return; }
+    const order = [];
+    const n = Math.max(t1.length, t2.length);
+    for (let i = 0; i < n; i++) {
+      if (i < t1.length) order.push(t1[i]);
+      if (i < t2.length) order.push(t2[i]);
+    }
+    setFaceoffOrder(order);
     setFaceoffPairIdx(0);
-    setFaceoffRevealed({});
     setFaceoffLiveQIdx(Math.floor(Math.random() * FACEOFF_QUESTIONS.length));
     setScreen("round3");
   }
@@ -659,47 +670,71 @@ function WhosWho() {
           </div>
         )}
 
-        {/* ROUND 3 - live face off */}
+        {/* ROUND 3 - storyteller face off */}
         {screen === "round3" && (
           <div className="flex-1 flex flex-col px-5 py-6 gap-4">
             <div className="text-center text-xs font-bold opacity-50">{t.faceoffLabel} · {faceoffOrder.length ? faceoffPairIdx + 1 : 0} / {faceoffOrder.length}</div>
             {faceoffOrder.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">{t.needOneEach}</div>
-            ) : (
-              <>
-                <div className="flex gap-3">
-                  {faceoffOrder[faceoffPairIdx].map((p) => (
-                    <div key={p.id} className="flex-1 rounded-2xl p-4 text-center card-shadow" style={{ background: TEAM_META[p.team].bg }}>
-                      <div className="font-black text-lg" style={{ color: TEAM_META[p.team].color }}>{p.name}</div>
-                      <div className="text-xs opacity-50 mt-0.5">{teamNames[p.team]}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                  <div className="w-full rounded-3xl p-7 text-center card-shadow flip-in" style={{ background: "#181B2A" }} key={faceoffLiveQIdx}>
-                    <div className="text-xs font-bold opacity-40 mb-4">{t.faceoffLabel}</div>
-                    <div className="text-xl font-black leading-relaxed" style={{ color: "#F2EDE3" }}>
-                      {FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}
-                    </div>
+            ) : (() => {
+              const storyteller = faceoffOrder[faceoffPairIdx];
+              const opposingTeam = storyteller.team === 1 ? 2 : 1;
+              function advanceFaceoff() {
+                const ni = faceoffPairIdx + 1;
+                nextFaceoffQ();
+                if (ni >= faceoffOrder.length) setScreen("rounds");
+                else setFaceoffPairIdx(ni);
+              }
+              return (
+                <>
+                  <div className="rounded-2xl p-4 text-center card-shadow" style={{ background: TEAM_META[storyteller.team].bg }}>
+                    <div className="font-black text-2xl" style={{ color: TEAM_META[storyteller.team].color }}>{storyteller.name}</div>
+                    <div className="text-xs opacity-60 mt-0.5">{teamNames[storyteller.team]}</div>
                   </div>
-                  <button onClick={nextFaceoffQ} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
-                    <span style={{fontSize:16}}>🔀</span> {t.newQuestion}
-                  </button>
-                </div>
 
-                <div className="text-center text-xs font-bold opacity-40">{t.faceoffWinnerPoints}</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => { award({ 1: 3 }); const ni = faceoffPairIdx + 1; nextFaceoffQ(); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{t.win(teamNames[1])}</button>
-                  <button onClick={() => { award({ 2: 3 }); const ni = faceoffPairIdx + 1; nextFaceoffQ(); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{t.win(teamNames[2])}</button>
-                </div>
-                {faceoffPairIdx + 1 < faceoffOrder.length ? (
-                  <button onClick={() => { setFaceoffPairIdx((i) => i + 1); nextFaceoffQ(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
-                ) : (
-                  <button onClick={() => setScreen("rounds")} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.endRound}</button>
-                )}
-              </>
-            )}
+                  <div className="text-center text-sm font-bold opacity-70">{t.faceoffInstruction}</div>
+
+                  <div className="rounded-2xl px-4 py-3 text-center font-black text-sm" style={{ background: TEAM_META[opposingTeam].bg, color: TEAM_META[opposingTeam].color }}>
+                    {t.faceoffChallenge(teamNames[opposingTeam])}
+                  </div>
+
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                    <div className="w-full rounded-3xl p-6 text-center card-shadow flip-in" style={{ background: "#181B2A" }} key={faceoffLiveQIdx}>
+                      <div className="text-xs font-bold opacity-40 mb-3">{t.faceoffLabel}</div>
+                      <div className="text-xl font-black leading-relaxed" style={{ color: "#F2EDE3" }}>
+                        {FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}
+                      </div>
+                    </div>
+                    <button onClick={nextFaceoffQ} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
+                      <span style={{fontSize:16}}>🔀</span> {t.newQuestion}
+                    </button>
+                  </div>
+
+                  <div className="text-center text-xs font-bold opacity-40">{t.faceoffWinnerPoints}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => { award({ [storyteller.team]: 3 }); advanceFaceoff(); }}
+                      className="py-3 rounded-xl font-bold active:scale-95 text-sm leading-tight"
+                      style={{ background: TEAM_META[storyteller.team].bg, color: TEAM_META[storyteller.team].color }}
+                    >
+                      {t.reacted(teamNames[opposingTeam])}
+                    </button>
+                    <button
+                      onClick={() => { award({ [opposingTeam]: 3 }); advanceFaceoff(); }}
+                      className="py-3 rounded-xl font-bold active:scale-95 text-sm leading-tight"
+                      style={{ background: TEAM_META[opposingTeam].bg, color: TEAM_META[opposingTeam].color }}
+                    >
+                      {t.noReaction(teamNames[opposingTeam])}
+                    </button>
+                  </div>
+                  {faceoffPairIdx + 1 < faceoffOrder.length ? (
+                    <button onClick={() => { setFaceoffPairIdx((i) => i + 1); nextFaceoffQ(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                  ) : (
+                    <button onClick={() => setScreen("rounds")} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.endRound}</button>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
