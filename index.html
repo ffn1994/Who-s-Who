@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Who's Who - مين هذا؟</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      html, body, #root { height: 100%; margin: 0; background: #12141F; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react">
+const { useState } = React;
+
+const QUESTIONS = [
+  { key: "job", label: "المهنة أو الوظيفة" },
+  { key: "color", label: "اللون المفضل" },
+  { key: "food", label: "الأكلة المفضلة" },
+  { key: "style", label: "شنو تلبس أغلب الوقت" },
+];
+const OPEN_QUESTIONS = [
+  { key: "wish", label: "لو تقدر تسوي شي وحد بس طول عمرك، شنو بيكون؟" },
+  { key: "funny", label: "شنو أكثر موقف محرج أو مضحك صار لك؟" },
+];
+const MAX_PHOTOS = 3;
+
+const TEAM_META = {
+  1: { color: "#E8A33D", bg: "#3A2E17" },
+  2: { color: "#3DB8A8", bg: "#123330" },
+};
+
+function uid() {
+  return Math.random().toString(36).slice(2, 9);
+}
+function emptyPlayerDraft(team) {
+  return { id: uid(), team, name: "", job: "", color: "", food: "", style: "", wish: "", funny: "", photos: [] };
+}
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function WhosWho() {
+  const [screen, setScreen] = useState("counts");
+  const [teamNames, setTeamNames] = useState({ 1: "الفريق الأول", 2: "الفريق الثاني" });
+  const [counts, setCounts] = useState({ 1: 2, 2: 2 });
+  const [queue, setQueue] = useState([]);
+  const [qIdx, setQIdx] = useState(0);
+  const [players, setPlayers] = useState([]);
+  const [draft, setDraft] = useState(null);
+  const [scores, setScores] = useState({ 1: 0, 2: 0 });
+
+  const [deck, setDeck] = useState([]);
+  const [deckIdx, setDeckIdx] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+
+  const [faceoffOrder, setFaceoffOrder] = useState([]);
+  const [faceoffPairIdx, setFaceoffPairIdx] = useState(0);
+  const [faceoffRevealed, setFaceoffRevealed] = useState({});
+
+  function startRegistration() {
+    const q = [];
+    for (let i = 0; i < counts[1]; i++) q.push({ team: 1, order: i });
+    for (let i = 0; i < counts[2]; i++) q.push({ team: 2, order: i });
+    setQueue(q);
+    setQIdx(0);
+    setPlayers([]);
+    setDraft(emptyPlayerDraft(q[0].team));
+    setScreen("pass");
+  }
+
+  function beginCurrentEntry() {
+    setDraft(emptyPlayerDraft(queue[qIdx].team));
+    setScreen("collecting");
+  }
+
+  function saveDraftAndAdvance() {
+    setPlayers((prev) => [...prev, draft]);
+    const next = qIdx + 1;
+    if (next >= queue.length) {
+      setScreen("rounds");
+    } else {
+      setQIdx(next);
+      setScreen("pass");
+    }
+  }
+
+  function updateDraft(field, value) {
+    setDraft((d) => ({ ...d, [field]: value }));
+  }
+
+  function handlePhotoPick(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDraft((d) => ({ ...d, photos: [...d.photos, { id: uid(), src: reader.result }] }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+  function removePhoto(id) {
+    setDraft((d) => ({ ...d, photos: d.photos.filter((p) => p.id !== id) }));
+  }
+
+  function buildDeck() {
+    const items = [];
+    players.forEach((p) => {
+      QUESTIONS.forEach((q) => {
+        if (p[q.key] && p[q.key].trim()) items.push({ player: p, attrLabel: q.label, value: p[q.key] });
+      });
+    });
+    return shuffle(items);
+  }
+  function buildPhotoDeck() {
+    const items = [];
+    players.forEach((p) => {
+      p.photos.forEach((ph) => items.push({ player: p, src: ph.src }));
+    });
+    return shuffle(items);
+  }
+
+  function startRound1() { setDeck(buildDeck()); setDeckIdx(0); setRevealed(false); setScreen("round1"); }
+  function startRound2() { setDeck(buildDeck()); setDeckIdx(0); setRevealed(false); setScreen("round2"); }
+  function startRound4() { setDeck(buildPhotoDeck()); setDeckIdx(0); setRevealed(false); setScreen("round4"); }
+  function startRound3() {
+    const t1 = shuffle(players.filter((p) => p.team === 1));
+    const t2 = shuffle(players.filter((p) => p.team === 2));
+    const n = Math.min(t1.length, t2.length);
+    const pairs = [];
+    for (let i = 0; i < n; i++) pairs.push([t1[i], t2[i]]);
+    setFaceoffOrder(pairs);
+    setFaceoffPairIdx(0);
+    setFaceoffRevealed({});
+    setScreen("round3");
+  }
+
+  function award(points) {
+    setScores((prev) => ({ 1: prev[1] + (points[1] || 0), 2: prev[2] + (points[2] || 0) }));
+  }
+  function nextCard() {
+    if (deckIdx + 1 >= deck.length) setScreen("rounds");
+    else { setDeckIdx((i) => i + 1); setRevealed(false); }
+  }
+  function resetGame() {
+    setScreen("counts");
+    setCounts({ 1: 2, 2: 2 });
+    setPlayers([]);
+    setQueue([]);
+    setQIdx(0);
+    setScores({ 1: 0, 2: 0 });
+    setDeck([]); setDeckIdx(0);
+    setFaceoffOrder([]); setFaceoffPairIdx(0); setFaceoffRevealed({});
+  }
+
+  const currentTeam = screen === "pass" || screen === "collecting" ? queue[qIdx]?.team : null;
+
+  return (
+    <div dir="rtl" className="min-h-screen w-full" style={{ background: "#12141F", color: "#F2EDE3", fontFamily: "'Tajawal', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
+        * { box-sizing: border-box; }
+        .card-shadow { box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+        .pulse { animation: pulse 1.6s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+        .flip-in { animation: flipIn 0.4s ease-out; }
+        @keyframes flipIn { from { opacity: 0; transform: scale(0.92) translateY(8px);} to { opacity: 1; transform: scale(1) translateY(0);} }
+        input, select { outline: none; }
+        input:focus { box-shadow: 0 0 0 2px #E8A33D; }
+      `}</style>
+
+      <div className="max-w-md mx-auto min-h-screen flex flex-col">
+        {["rounds", "round1", "round2", "round3", "round4"].includes(screen) && (
+          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "#252840" }}>
+            <button onClick={() => setScreen("rounds")} className="p-2 rounded-full active:scale-95" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:18}}>◀</span>
+            </button>
+            <div className="flex gap-3 text-sm font-bold">
+              <div className="px-3 py-1 rounded-full" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{teamNames[1]} · {scores[1]}</div>
+              <div className="px-3 py-1 rounded-full" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{teamNames[2]} · {scores[2]}</div>
+            </div>
+          </div>
+        )}
+
+        {screen === "counts" && (
+          <div className="flex-1 flex flex-col px-5 py-10 gap-8 justify-center">
+            <div className="text-center mb-2">
+              <div className="text-4xl font-black tracking-tight" style={{ color: "#E8A33D" }}>مين هذا؟</div>
+              <div className="text-sm mt-1 opacity-60">لعبة العائلة والأصدقاء — كل واحد يلعب</div>
+            </div>
+
+            {[1, 2].map((team) => (
+              <div key={team} className="rounded-2xl p-5 card-shadow flex flex-col gap-4" style={{ background: "#181B2A" }}>
+                <div className="flex items-center gap-2">
+                  <span style={{fontSize:18}}>👥</span>
+                  <input
+                    value={teamNames[team]}
+                    onChange={(e) => setTeamNames((t) => ({ ...t, [team]: e.target.value }))}
+                    className="bg-transparent font-bold text-lg flex-1 border-b pb-1"
+                    style={{ borderColor: TEAM_META[team].color, color: TEAM_META[team].color }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm opacity-70">عدد اللاعبين</span>
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.max(1, c[team] - 1) }))} className="w-9 h-9 rounded-full flex items-center justify-center active:scale-95" style={{ background: "#12141F" }}>
+                      <span style={{fontSize:18,fontWeight:900}}>−</span>
+                    </button>
+                    <span className="text-2xl font-black w-6 text-center">{counts[team]}</span>
+                    <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.min(12, c[team] + 1) }))} className="w-9 h-9 rounded-full flex items-center justify-center active:scale-95" style={{ background: "#12141F" }}>
+                      <span style={{fontSize:18,fontWeight:900}}>+</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
+              ابدأ التسجيل الخاص
+            </button>
+            <div className="text-center text-xs opacity-45 leading-relaxed">
+              كل شخص بيسجل بياناته لحاله بخصوصية. الجوال بيتمرر بينكم، وما يشوف أي أحد بيانات غيره.
+            </div>
+          </div>
+        )}
+
+        {screen === "pass" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
+            <span style={{fontSize:40}}>🔄</span>
+            <div className="text-sm opacity-60">مرر الجوال إلى</div>
+            <div className="text-2xl font-black" style={{ color: TEAM_META[currentTeam].color }}>
+              لاعب من {teamNames[currentTeam]}
+            </div>
+            <div className="text-xs opacity-40 max-w-xs leading-relaxed">
+              تأكد إن باقي اللاعبين ما يشوفون الشاشة الحين — هذا وقتك الخاص
+            </div>
+            <button onClick={beginCurrentEntry} className="mt-2 px-8 py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[currentTeam].bg, color: TEAM_META[currentTeam].color }}>
+              جاهز، عبّي بياناتك
+            </button>
+          </div>
+        )}
+
+        {screen === "collecting" && draft && (
+          <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+            <div className="text-center text-xs font-bold opacity-50 mb-1" style={{ color: TEAM_META[currentTeam].color }}>
+              {teamNames[currentTeam]} · لاعب {queue[qIdx].order + 1} / {counts[currentTeam]}
+            </div>
+
+            <input
+              placeholder="اسمك"
+              value={draft.name}
+              onChange={(e) => updateDraft("name", e.target.value)}
+              className="rounded-xl px-4 py-3 font-bold text-lg placeholder-white/25"
+              style={{ background: "#181B2A" }}
+            />
+
+            <div className="grid grid-cols-2 gap-2">
+              {QUESTIONS.map((q) => (
+                <input
+                  key={q.key}
+                  placeholder={q.label}
+                  value={draft[q.key]}
+                  onChange={(e) => updateDraft(q.key, e.target.value)}
+                  className="rounded-xl px-3 py-2.5 text-sm placeholder-white/25"
+                  style={{ background: "#181B2A" }}
+                />
+              ))}
+            </div>
+
+            {OPEN_QUESTIONS.map((q) => (
+              <input
+                key={q.key}
+                placeholder={q.label}
+                value={draft[q.key]}
+                onChange={(e) => updateDraft(q.key, e.target.value)}
+                className="rounded-xl px-3 py-2.5 text-sm placeholder-white/25"
+                style={{ background: "#181B2A" }}
+              />
+            ))}
+
+            <div className="rounded-xl p-3 flex flex-col gap-3" style={{ background: "#181B2A" }}>
+              <div className="text-xs font-bold opacity-60">صور أغراضك (لين {MAX_PHOTOS}) — ساعة، جوتي، سيارة، لعبة...</div>
+              <div className="flex gap-2 flex-wrap">
+                {draft.photos.map((p) => (
+                  <div key={p.id} className="relative w-16 h-16 rounded-lg overflow-hidden">
+                    <img src={p.src} className="w-full h-full object-cover" />
+                    <button onClick={() => removePhoto(p.id)} className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
+                      <span style={{fontSize:14}}>✕</span>
+                    </button>
+                  </div>
+                ))}
+                {draft.photos.length < MAX_PHOTOS && (
+                  <label className="w-16 h-16 rounded-lg flex items-center justify-center active:scale-95 cursor-pointer" style={{ background: "#12141F" }}>
+                    <span style={{fontSize:22}}>📷</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoPick} />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <button
+              disabled={!draft.name.trim()}
+              onClick={saveDraftAndAdvance}
+              className="w-full py-4 rounded-2xl font-black text-lg mt-2 active:scale-95 disabled:opacity-30"
+              style={{ background: "#E8A33D", color: "#12141F" }}
+            >
+              {qIdx + 1 >= queue.length ? "خلصت — ابدأ اللعبة" : "خلصت، مرر الجوال"}
+            </button>
+          </div>
+        )}
+
+        {screen === "rounds" && (
+          <div className="flex-1 flex flex-col px-5 py-8 gap-4">
+            <div className="text-center mb-2">
+              <div className="text-2xl font-black" style={{ color: "#E8A33D" }}>اختر الجولة</div>
+              <div className="text-xs opacity-50 mt-1">مرّروا الجوال لأي شخص — الكل يقدر يشغّلها ويلعب</div>
+            </div>
+
+            <button onClick={startRound1} className="rounded-2xl p-5 text-right card-shadow active:scale-95" style={{ background: "#181B2A" }}>
+              <div className="text-xs font-bold opacity-50 mb-1">الجولة ١</div>
+              <div className="text-xl font-black" style={{ color: "#E8A33D" }}>التخمين</div>
+              <div className="text-xs opacity-60 mt-1">يطلع اسم شخص وصفة، والفرق تخمن جوابه</div>
+            </button>
+
+            <button onClick={startRound2} className="rounded-2xl p-5 text-right card-shadow active:scale-95" style={{ background: "#181B2A" }}>
+              <div className="text-xs font-bold opacity-50 mb-1">الجولة ٢</div>
+              <div className="text-xl font-black" style={{ color: "#3DB8A8" }}>تريفيا</div>
+              <div className="text-xs opacity-60 mt-1">يطلع الجواب، والفرق تخمن مين صاحبه</div>
+            </button>
+
+            <button onClick={startRound3} className="rounded-2xl p-5 text-right card-shadow active:scale-95" style={{ background: "#181B2A" }}>
+              <div className="text-xs font-bold opacity-50 mb-1">الجولة ٣</div>
+              <div className="text-xl font-black" style={{ color: "#E85D5D" }}>المواجهة</div>
+              <div className="text-xs opacity-60 mt-1">ممثل من كل فريق وجهاً لوجه</div>
+            </button>
+
+            <button onClick={startRound4} className="rounded-2xl p-5 text-right card-shadow active:scale-95" style={{ background: "#181B2A" }}>
+              <div className="text-xs font-bold opacity-50 mb-1">الجولة ٤</div>
+              <div className="text-xl font-black" style={{ color: "#9B8CE8" }}>خمّن الصورة</div>
+              <div className="text-xs opacity-60 mt-1">تطلع صورة غرض، مين صاحبه؟</div>
+            </button>
+
+            <button onClick={() => setScreen("final")} className="mt-2 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:18}}>🏆</span> إنهاء اللعبة والنتيجة
+            </button>
+          </div>
+        )}
+
+        {(screen === "round1" || screen === "round2") && (
+          <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+            <div className="text-center text-xs font-bold opacity-50">
+              {screen === "round1" ? "التخمين" : "تريفيا"} · {deck.length ? deckIdx + 1 : 0} / {deck.length}
+            </div>
+            {deck.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">ما فيه أسئلة كافية معبّاة بالبطاقات.</div>
+            ) : (
+              <>
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="w-full rounded-3xl p-8 text-center card-shadow flip-in" style={{ background: "#181B2A", minHeight: 220 }} key={deckIdx}>
+                    {screen === "round1" ? (
+                      <>
+                        <div className="text-sm font-bold opacity-50 mb-3">الشخص</div>
+                        <div className="text-3xl font-black mb-5">{deck[deckIdx].player.name}</div>
+                        <div className="text-sm font-bold opacity-50 mb-2">الصفة المطلوبة</div>
+                        <div className="text-xl font-black" style={{ color: "#E8A33D" }}>{deck[deckIdx].attrLabel}</div>
+                        {revealed && (
+                          <div className="mt-5 text-2xl font-black pulse" style={{ color: "#3DB8A8" }}>{deck[deckIdx].value}</div>
+                        )}
+                        {!revealed && (
+                          <button onClick={() => setRevealed(true)} className="mt-6 mx-auto flex items-center gap-2 px-5 py-3 rounded-xl font-bold active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
+                            <span style={{fontSize:18}}>👁️</span> كشف الجواب
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm font-bold opacity-50 mb-3">{deck[deckIdx].attrLabel}</div>
+                        <div className="text-2xl font-black leading-relaxed mb-2">{deck[deckIdx].value}</div>
+                        <div className="text-lg opacity-70 mb-4">مين جوابه كذا؟</div>
+                        {!revealed ? (
+                          <button onClick={() => setRevealed(true)} className="mt-4 mx-auto flex items-center gap-2 px-5 py-3 rounded-xl font-bold active:scale-95" style={{ background: "#3DB8A8", color: "#12141F" }}>
+                            <span style={{fontSize:18}}>👁️</span> كشف الاسم
+                          </button>
+                        ) : (
+                          <div className="mt-5 text-3xl font-black pulse" style={{ color: "#3DB8A8" }}>{deck[deckIdx].player.name}</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center text-xs font-bold opacity-40 mb-1">عد "٣.. ٢.. ١.. أشيروا!" ثم امنح النقاط</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { award({ 1: 1 }); nextCard(); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{teamNames[1]} صح</button>
+                  <button onClick={() => { award({ 2: 1 }); nextCard(); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{teamNames[2]} صح</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { award({ 1: 1, 2: 1 }); nextCard(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>الاثنين صح</button>
+                  <button onClick={() => nextCard()} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>تخطي بدون نقاط</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {screen === "round4" && (
+          <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+            <div className="text-center text-xs font-bold opacity-50">خمّن الصورة · {deck.length ? deckIdx + 1 : 0} / {deck.length}</div>
+            {deck.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">محد رفع صور بعد. رجعوا لتسجيل الأغراض.</div>
+            ) : (
+              <>
+                <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                  <div className="w-full rounded-3xl overflow-hidden card-shadow flip-in" style={{ background: "#181B2A" }} key={deckIdx}>
+                    <img src={deck[deckIdx].src} className="w-full h-64 object-cover" />
+                    <div className="p-5 text-center">
+                      {!revealed ? (
+                        <button onClick={() => setRevealed(true)} className="mx-auto flex items-center gap-2 px-5 py-3 rounded-xl font-bold active:scale-95" style={{ background: "#9B8CE8", color: "#12141F" }}>
+                          <span style={{fontSize:18}}>👁️</span> كشف الاسم
+                        </button>
+                      ) : (
+                        <div className="text-3xl font-black pulse" style={{ color: "#9B8CE8" }}>{deck[deckIdx].player.name}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center text-xs font-bold opacity-40 mb-1">عد "٣.. ٢.. ١.. أشيروا!" ثم امنح النقاط</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { award({ 1: 1 }); nextCard(); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{teamNames[1]} صح</button>
+                  <button onClick={() => { award({ 2: 1 }); nextCard(); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{teamNames[2]} صح</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { award({ 1: 1, 2: 1 }); nextCard(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>الاثنين صح</button>
+                  <button onClick={() => nextCard()} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>تخطي بدون نقاط</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {screen === "round3" && (
+          <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+            <div className="text-center text-xs font-bold opacity-50">المواجهة · {faceoffOrder.length ? faceoffPairIdx + 1 : 0} / {faceoffOrder.length}</div>
+            {faceoffOrder.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">محتاج لاعب واحد على الأقل بكل فريق.</div>
+            ) : (
+              <>
+                <div className="flex-1 flex flex-col gap-4">
+                  {faceoffOrder[faceoffPairIdx].map((p, idx) => {
+                    const team = p.team;
+                    const rkey = `${faceoffPairIdx}-${idx}`;
+                    const isOpen = !!faceoffRevealed[rkey];
+                    return (
+                      <div key={p.id} className="rounded-2xl p-5 card-shadow" style={{ background: TEAM_META[team].bg }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-black text-xl" style={{ color: TEAM_META[team].color }}>{p.name}</div>
+                          <button onClick={() => setFaceoffRevealed((r) => ({ ...r, [rkey]: !r[rkey] }))} className="p-2 rounded-lg active:scale-95" style={{ background: "rgba(0,0,0,0.25)" }}>
+                            {isOpen ? <span style={{fontSize:18}}>🙈</span> : <span style={{fontSize:18}}>👁️</span>}
+                          </button>
+                        </div>
+                        {isOpen && (
+                          <div className="flex flex-col gap-1.5 text-sm mt-2 flip-in">
+                            <div><span className="opacity-60">{OPEN_QUESTIONS[0].label}:</span> {p.wish || "—"}</div>
+                            <div><span className="opacity-60">{OPEN_QUESTIONS[1].label}:</span> {p.funny || "—"}</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-center text-xs font-bold opacity-40">الفايز بالمواجهة ياخذ ٣ نقاط</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { award({ 1: 3 }); const ni = faceoffPairIdx + 1; setFaceoffRevealed({}); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[1].bg, color: TEAM_META[1].color }}>فوز {teamNames[1]}</button>
+                  <button onClick={() => { award({ 2: 3 }); const ni = faceoffPairIdx + 1; setFaceoffRevealed({}); if (ni >= faceoffOrder.length) setScreen("rounds"); else setFaceoffPairIdx(ni); }} className="py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[2].bg, color: TEAM_META[2].color }}>فوز {teamNames[2]}</button>
+                </div>
+                {faceoffPairIdx + 1 < faceoffOrder.length ? (
+                  <button onClick={() => { setFaceoffPairIdx((i) => i + 1); setFaceoffRevealed({}); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>تخطي بدون نقاط</button>
+                ) : (
+                  <button onClick={() => setScreen("rounds")} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>إنهاء الجولة</button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {screen === "final" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
+            <span style={{fontSize:48}}>🏆</span>
+            <div className="text-3xl font-black">
+              {scores[1] === scores[2] ? "تعادل!" : scores[1] > scores[2] ? `${teamNames[1]} يفوز!` : `${teamNames[2]} يفوز!`}
+            </div>
+            <div className="flex gap-6 text-xl font-bold">
+              <div style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</div>
+              <div style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</div>
+            </div>
+            <button onClick={resetGame} className="mt-4 flex items-center gap-2 px-6 py-3 rounded-xl font-bold active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
+              <span style={{fontSize:18}}>↺</span> لعبة جديدة
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<WhosWho />);
+    </script>
+  </body>
+</html>
