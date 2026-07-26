@@ -208,6 +208,7 @@ function WhosWho() {
   const [faceoffPairIdx, setFaceoffPairIdx] = useState(0);
   const [faceoffRevealed, setFaceoffRevealed] = useState({});
   const [faceoffLiveQIdx, setFaceoffLiveQIdx] = useState(0);
+  const [faceoffShufflesLeft, setFaceoffShufflesLeft] = useState(3);
 
   function startRegistration() {
     const q = [];
@@ -292,10 +293,12 @@ function WhosWho() {
     setFaceoffOrder(order);
     setFaceoffPairIdx(0);
     setFaceoffLiveQIdx(Math.floor(Math.random() * FACEOFF_QUESTIONS.length));
+    setFaceoffShufflesLeft(3);
     setScreen("round3");
   }
 
   function nextFaceoffQ() {
+    setFaceoffShufflesLeft((n) => n - 1);
     setFaceoffLiveQIdx((idx) => {
       let next = Math.floor(Math.random() * FACEOFF_QUESTIONS.length);
       if (next === idx) next = (idx + 1) % FACEOFF_QUESTIONS.length;
@@ -681,7 +684,12 @@ function WhosWho() {
               const opposingTeam = storyteller.team === 1 ? 2 : 1;
               function advanceFaceoff() {
                 const ni = faceoffPairIdx + 1;
-                nextFaceoffQ();
+                setFaceoffLiveQIdx((idx) => {
+                  let next = Math.floor(Math.random() * FACEOFF_QUESTIONS.length);
+                  if (next === idx) next = (idx + 1) % FACEOFF_QUESTIONS.length;
+                  return next;
+                });
+                setFaceoffShufflesLeft(3);
                 if (ni >= faceoffOrder.length) setScreen("rounds");
                 else setFaceoffPairIdx(ni);
               }
@@ -705,9 +713,12 @@ function WhosWho() {
                         {FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}
                       </div>
                     </div>
-                    <button onClick={nextFaceoffQ} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
-                      <span style={{fontSize:16}}>🔀</span> {t.newQuestion}
-                    </button>
+                    {faceoffShufflesLeft > 0 && (
+                      <button onClick={nextFaceoffQ} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
+                        <span style={{fontSize:16}}>🔀</span> {t.newQuestion}
+                        <span className="rounded-full w-5 h-5 flex items-center justify-center text-xs font-black" style={{ background: "#E8A33D", color: "#12141F" }}>{faceoffShufflesLeft}</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="text-center text-xs font-bold opacity-40">{t.faceoffWinnerPoints}</div>
@@ -728,7 +739,7 @@ function WhosWho() {
                     </button>
                   </div>
                   {faceoffPairIdx + 1 < faceoffOrder.length ? (
-                    <button onClick={() => { setFaceoffPairIdx((i) => i + 1); nextFaceoffQ(); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                    <button onClick={() => { setFaceoffPairIdx((i) => i + 1); setFaceoffShufflesLeft(3); setFaceoffLiveQIdx((idx) => { let next = Math.floor(Math.random() * FACEOFF_QUESTIONS.length); if (next === idx) next = (idx + 1) % FACEOFF_QUESTIONS.length; return next; }); }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
                   ) : (
                     <button onClick={() => setScreen("rounds")} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.endRound}</button>
                   )}
