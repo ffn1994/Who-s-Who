@@ -472,6 +472,9 @@ function WhosWho() {
             <button onClick={() => setScreen("final")} className="mt-2 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2" style={{ background: "#1C1F30" }}>
               <span style={{fontSize:18}}>🏆</span> {t.endGame}
             </button>
+            <button onClick={resetGame} className="py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:18}}>↺</span> {t.newGame}
+            </button>
           </div>
         )}
 
