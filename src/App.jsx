@@ -769,29 +769,29 @@ function WhosWho() {
                     <div className="tv-card flip-in" style={{ width: "100%", padding: "56px 64px", textAlign: "center" }} key={deckIdx}>
                       {isR1 ? (
                         <>
-                          <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{t.personLabel}</div>
-                          <div style={{ fontSize: 64, fontWeight: 900, marginBottom: 28 }}>{deck[deckIdx].player.name}</div>
-                          <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.5, marginBottom: 14 }}>{t.attrNeeded}</div>
-                          <div style={{ fontSize: 40, fontWeight: 900, color: "#E8A33D", marginBottom: 28 }}>{deck[deckIdx].attrLabel}</div>
+                          <div style={{ fontSize: 26, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{t.personLabel}</div>
+                          <div style={{ fontSize: 72, fontWeight: 900, marginBottom: 28 }}>{deck[deckIdx].player.name}</div>
+                          <div style={{ fontSize: 26, fontWeight: 700, opacity: 0.5, marginBottom: 14 }}>{t.attrNeeded}</div>
+                          <div style={{ fontSize: 56, fontWeight: 900, color: "#E8A33D", marginBottom: 28 }}>{deck[deckIdx].attrLabel}</div>
                           {revealed ? (
-                            <div className="pulse" style={{ fontSize: 56, fontWeight: 900, color: "#3DB8A8" }}>{deck[deckIdx].value}</div>
+                            <div className="pulse" style={{ fontSize: 76, fontWeight: 900, color: "#3DB8A8" }}>{deck[deckIdx].value}</div>
                           ) : (
-                            <button onClick={() => setRevealed(true)} style={{ margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "20px 40px", borderRadius: 14, fontWeight: 700, fontSize: 24, background: "#E8A33D", color: "#12141F" }}>
-                              <span style={{fontSize:26}}>👁️</span> {t.revealAnswer}
+                            <button onClick={() => setRevealed(true)} style={{ margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "22px 44px", borderRadius: 14, fontWeight: 700, fontSize: 28, background: "#E8A33D", color: "#12141F" }}>
+                              <span style={{fontSize:30}}>👁️</span> {t.revealAnswer}
                             </button>
                           )}
                         </>
                       ) : (
                         <>
-                          <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{deck[deckIdx].attrLabel}</div>
-                          <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1.3, marginBottom: 24 }}>{deck[deckIdx].value}</div>
-                          <div style={{ fontSize: 26, opacity: 0.7, marginBottom: 28 }}>{t.whoseAnswer}</div>
+                          <div style={{ fontSize: 30, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{deck[deckIdx].attrLabel}</div>
+                          <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1.3, marginBottom: 28 }}>{deck[deckIdx].value}</div>
+                          <div style={{ fontSize: 30, opacity: 0.7, marginBottom: 28 }}>{t.whoseAnswer}</div>
                           {!revealed ? (
-                            <button onClick={() => setRevealed(true)} style={{ margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "20px 40px", borderRadius: 14, fontWeight: 700, fontSize: 24, background: "#3DB8A8", color: "#12141F" }}>
-                              <span style={{fontSize:26}}>👁️</span> {t.revealName}
+                            <button onClick={() => setRevealed(true)} style={{ margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "22px 44px", borderRadius: 14, fontWeight: 700, fontSize: 28, background: "#3DB8A8", color: "#12141F" }}>
+                              <span style={{fontSize:30}}>👁️</span> {t.revealName}
                             </button>
                           ) : (
-                            <div className="pulse" style={{ fontSize: 56, fontWeight: 900, color: "#3DB8A8" }}>{deck[deckIdx].player.name}</div>
+                            <div className="pulse" style={{ fontSize: 76, fontWeight: 900, color: "#3DB8A8" }}>{deck[deckIdx].player.name}</div>
                           )}
                         </>
                       )}
@@ -986,8 +986,8 @@ function WhosWho() {
                 {/* center: challenge card */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                   <div className="tv-card flip-in" style={{ padding: "48px 56px", textAlign: "center" }} key={faceoffLiveQIdx}>
-                    <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.4, marginBottom: 20 }}>{t.faceoffLabel}</div>
-                    <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1.4 }}>{FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.4, marginBottom: 20 }}>{t.faceoffLabel}</div>
+                    <div style={{ fontSize: 58, fontWeight: 900, lineHeight: 1.4 }}>{FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}</div>
                   </div>
                   {faceoffShufflesLeft > 0 && (
                     <div style={{ display: "flex", justifyContent: "center" }}>
