@@ -217,13 +217,24 @@ function WhosWho() {
   const t = STR[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
 
-  const [isTV, setIsTV] = useState(false);
+  const [isTVManual, setIsTVManual] = useState(false);
+  const [isTVAuto, setIsTVAuto] = useState(false);
+  const isTV = isTVManual || isTVAuto;
   useEffect(() => {
-    function check() { setIsTV(window.innerWidth >= 900 && window.innerWidth > window.innerHeight); }
+    function check() { setIsTVAuto(window.innerWidth >= 1024 && window.innerWidth > window.innerHeight); }
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+  function toggleTV() {
+    const next = !isTVManual;
+    setIsTVManual(next);
+    if (next) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }
 
   const [screen, setScreen] = useState("counts");
   const [teamNames, setTeamNames] = useState({ 1: STR.ar.defaultTeam1, 2: STR.ar.defaultTeam2 });
@@ -432,6 +443,12 @@ function WhosWho() {
         style={{ position: "fixed", top: 12, insetInlineEnd: 12, zIndex: 50, background: "#1C1F30", color: "#E8A33D", fontWeight: 900, fontSize: 12, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
       >
         {lang === "ar" ? "EN" : "AR"}
+      </button>
+
+      <button onClick={toggleTV} className="active:scale-95"
+        style={{ position: "fixed", top: 12, insetInlineStart: 12, zIndex: 50, background: isTVManual ? "#E8A33D" : "#1C1F30", color: isTVManual ? "#12141F" : "#F2EDE3", fontWeight: 900, fontSize: 16, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+        title="TV Mode">
+        📺
       </button>
 
       <div className={isTV ? "" : "max-w-md mx-auto min-h-screen flex flex-col"}>
