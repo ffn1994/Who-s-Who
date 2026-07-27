@@ -532,31 +532,31 @@ function WhosWho() {
 
         {/* ── COUNTS TV ── */}
         {screen === "counts" && isTV && (
-          <div className="tv-screen" style={{ padding: "32px 48px", gap: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 8 }}>
-              <WhosWhoLogo size={52} />
-              <div style={{ opacity: 0.5, fontSize: 18 }}>{t.subtitle}</div>
+          <div className="tv-screen" style={{ padding: "28px 56px", gap: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28 }}>
+              <WhosWhoLogo size={48} />
+              <div style={{ opacity: 0.45, fontSize: 22 }}>{t.subtitle}</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "row", gap: 32 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "row", gap: 32, minHeight: 0 }}>
               {[1, 2].map((team) => (
-                <div key={team} className="tv-card" style={{ flex: 1, padding: "32px 40px", display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <span style={{fontSize:32}}>👥</span>
+                <div key={team} className="tv-card" style={{ flex: 1, padding: "44px 56px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 48, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                    <span style={{fontSize:36}}>👥</span>
                     <input value={teamNames[team]} onChange={(e) => setTeamNames((tn) => ({ ...tn, [team]: e.target.value }))}
-                      style={{ background: "transparent", fontWeight: 900, fontSize: 52, flex: 1, borderBottom: `3px solid ${TEAM_META[team].color}`, color: TEAM_META[team].color, paddingBottom: 4, minWidth: 0 }} />
+                      style={{ background: "transparent", fontWeight: 900, fontSize: 60, flex: 1, borderBottom: `3px solid ${TEAM_META[team].color}`, color: TEAM_META[team].color, paddingBottom: 6, minWidth: 0 }} />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 24, opacity: 0.7 }}>{t.playersCount}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-                      <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.max(1, c[team] - 1) }))} style={{ width: 64, height: 64, borderRadius: "50%", background: "#12141F", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                      <span style={{ fontSize: 80, fontWeight: 900, width: 80, textAlign: "center", lineHeight: 1 }}>{counts[team]}</span>
-                      <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.min(12, c[team] + 1) }))} style={{ width: 64, height: 64, borderRadius: "50%", background: "#12141F", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    <span style={{ fontSize: 28, opacity: 0.7 }}>{t.playersCount}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+                      <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.max(1, c[team] - 1) }))} style={{ width: 72, height: 72, borderRadius: "50%", background: "#12141F", fontSize: 36, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <span style={{ fontSize: 96, fontWeight: 900, width: 96, textAlign: "center", lineHeight: 1, color: TEAM_META[team].color }}>{counts[team]}</span>
+                      <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.min(12, c[team] + 1) }))} style={{ width: 72, height: 72, borderRadius: "50%", background: "#12141F", fontSize: 36, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="tv-card" style={{ padding: "28px 40px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="tv-card" style={{ padding: "24px 40px", display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.45 }}>{t.customizeQuestions}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                 {QUESTIONS.map((q, i) => (
@@ -571,16 +571,15 @@ function WhosWho() {
                 ))}
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", gap: 16 }}>
               {players.length > 0 ? (
-                <div style={{ display: "flex", gap: 16 }}>
-                  <button onClick={continueRegistration} style={{ flex: 1, padding: "22px 0", borderRadius: 16, fontWeight: 900, fontSize: 26, background: "#E8A33D", color: "#12141F" }}>{t.continueReg(players.length, queue.length)}</button>
-                  <button onClick={resetRegistration} style={{ flex: 1, padding: "20px 0", borderRadius: 16, fontWeight: 700, fontSize: 22, background: "#1C1F30" }}>{t.startOver}</button>
-                </div>
+                <>
+                  <button onClick={continueRegistration} style={{ flex: 1, padding: "22px 0", borderRadius: 16, fontWeight: 900, fontSize: 28, background: "#E8A33D", color: "#12141F" }}>{t.continueReg(players.length, queue.length)}</button>
+                  <button onClick={resetRegistration} style={{ flex: 1, padding: "22px 0", borderRadius: 16, fontWeight: 700, fontSize: 24, background: "#1C1F30" }}>{t.startOver}</button>
+                </>
               ) : (
-                <button onClick={startRegistration} style={{ width: "100%", padding: "24px 0", borderRadius: 16, fontWeight: 900, fontSize: 28, background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+                <button onClick={startRegistration} style={{ flex: 1, padding: "24px 0", borderRadius: 16, fontWeight: 900, fontSize: 30, background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
               )}
-              <div style={{ textAlign: "center", fontSize: 12, opacity: 0.4 }}>{t.privacyNote}</div>
             </div>
           </div>
         )}
@@ -667,16 +666,16 @@ function WhosWho() {
 
         {/* ── ROUNDS MENU TV ── */}
         {screen === "rounds" && isTV && (
-          <div className="tv-screen" style={{ padding: "40px 80px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+          <div className="tv-screen" style={{ padding: "28px 64px", gap: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <WhosWhoLogo size={44} />
-              <div style={{ display: "flex", gap: 48, fontSize: 28, fontWeight: 900 }}>
+              <div style={{ display: "flex", gap: 56, fontSize: 34, fontWeight: 900 }}>
                 <span style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</span>
                 <span style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</span>
               </div>
-              <div style={{ fontSize: 16, opacity: 0.5 }}>{t.passAnyone}</div>
+              <div style={{ fontSize: 20, opacity: 0.5 }}>{t.passAnyone}</div>
             </div>
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 20 }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 24, minHeight: 0 }}>
               {[
                 { label: t.round1Title, name: t.round1Name, color: "#E8A33D", action: startRound1, enabled: true, desc: t.round1Desc },
                 { label: t.round2Title, name: t.round2Name, color: "#3DB8A8", action: startRound2, enabled: triviaOk, desc: triviaOk ? t.round2Desc : t.triviaLocked },
@@ -684,16 +683,16 @@ function WhosWho() {
                 { label: t.round4Title, name: t.round4Name, color: "#9B8CE8", action: startRound4, enabled: true, desc: t.round4Desc },
               ].map((r, i) => (
                 <button key={i} onClick={r.enabled ? r.action : undefined}
-                  className="tv-card" style={{ padding: "32px 40px", textAlign: "start", opacity: r.enabled ? 1 : 0.35, cursor: r.enabled ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.5 }}>{r.label}</div>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: r.color }}>{r.name}</div>
-                  <div style={{ fontSize: 14, opacity: 0.6 }}>{r.desc}</div>
+                  className="tv-card" style={{ padding: "40px 56px", textAlign: "start", opacity: r.enabled ? 1 : 0.35, cursor: r.enabled ? "pointer" : "default", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.5 }}>{r.label}</div>
+                  <div style={{ fontSize: 48, fontWeight: 900, color: r.color }}>{r.name}</div>
+                  <div style={{ fontSize: 22, opacity: 0.6 }}>{r.desc}</div>
                 </button>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
-              <button onClick={() => setScreen("final")} style={{ flex: 1, padding: "16px 0", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>🏆 {t.endGame}</button>
-              <button onClick={resetGame} style={{ flex: 1, padding: "16px 0", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>↺ {t.newGame}</button>
+            <div style={{ display: "flex", gap: 16 }}>
+              <button onClick={() => setScreen("final")} style={{ flex: 1, padding: "20px 0", borderRadius: 14, fontWeight: 700, fontSize: 22, background: "#1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>🏆 {t.endGame}</button>
+              <button onClick={resetGame} style={{ flex: 1, padding: "20px 0", borderRadius: 14, fontWeight: 700, fontSize: 22, background: "#1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>↺ {t.newGame}</button>
             </div>
           </div>
         )}
@@ -762,9 +761,9 @@ function WhosWho() {
                 <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
               </div>
               {/* body */}
-              <div className="tv-body" style={{ padding: "32px 64px", gap: 32, alignItems: "stretch" }}>
+              <div className="tv-body" style={{ padding: "28px 48px", gap: 28, alignItems: "stretch" }}>
                 {/* left: team banner + timer controls */}
-                <div style={{ width: 260, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
+                <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                   {deck.length > 0 && (
                     <div className="tv-card" style={{ padding: "32px 24px", textAlign: "center" }}>
                       <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.5, marginBottom: 10 }}>{t.questionFor(teamNames[deck[deckIdx].askedTeam])}</div>
@@ -782,7 +781,7 @@ function WhosWho() {
                   {deck.length === 0 ? (
                     <div style={{ opacity: 0.6, fontSize: 20, textAlign: "center" }}>{t.noQuestions}</div>
                   ) : (
-                    <div className="tv-card flip-in" style={{ width: "100%", padding: "56px 64px", textAlign: "center" }} key={deckIdx}>
+                    <div className="tv-card flip-in" style={{ width: "100%", padding: "64px 72px", textAlign: "center" }} key={deckIdx}>
                       {isR1 ? (
                         <>
                           <div style={{ fontSize: 26, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{t.personLabel}</div>
@@ -816,7 +815,7 @@ function WhosWho() {
                 </div>
                 {/* right: win buttons */}
                 {deck.length > 0 && (
-                  <div style={{ width: 260, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                  <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                     <button onClick={() => { award({ [deck[deckIdx].askedTeam]: 1 }); nextCard(); }}
                       style={{ padding: "28px 16px", borderRadius: 16, fontWeight: 900, fontSize: 26, background: TEAM_META[deck[deckIdx].askedTeam].bg, color: TEAM_META[deck[deckIdx].askedTeam].color }}>
                       {teamNames[deck[deckIdx].askedTeam]} {t.correct}
@@ -904,7 +903,7 @@ function WhosWho() {
             <div style={{ height: 6, background: "#1C1F30" }}>
               <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
             </div>
-            <div className="tv-body" style={{ padding: "32px 80px", gap: 48, alignItems: "center" }}>
+            <div className="tv-body" style={{ padding: "28px 56px", gap: 40, alignItems: "stretch" }}>
               {deck.length === 0 ? (
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.6, fontSize: 20 }}>{t.noPhotos}</div>
               ) : (
@@ -918,7 +917,7 @@ function WhosWho() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                  <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                     <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", marginBottom: 12 }}>
                       <span style={{ fontSize: 48, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
                       <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>{timerRunning ? "⏸" : "▶"}</button>
@@ -988,7 +987,7 @@ function WhosWho() {
               </div>
               <div className="tv-body" style={{ padding: "28px 48px", gap: 28, alignItems: "stretch" }}>
                 {/* left: storyteller */}
-                <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                   <div className="tv-card" style={{ padding: "36px 24px", textAlign: "center" }}>
                     <div style={{ fontSize: 18, opacity: 0.5, marginBottom: 12 }}>{teamNames[storyteller.team]}</div>
                     <div style={{ fontSize: 52, fontWeight: 900, color: TEAM_META[storyteller.team].color }}>{storyteller.name}</div>
@@ -1015,7 +1014,7 @@ function WhosWho() {
                   )}
                 </div>
                 {/* right: opponent + win buttons */}
-                <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                   <div className="tv-card" style={{ padding: "28px", textAlign: "center", background: TEAM_META[opp].bg }}>
                     <div style={{ fontSize: 18, opacity: 0.8, color: TEAM_META[opp].color }}>{t.faceoffChallenge(teamNames[opp])}</div>
                   </div>
@@ -1121,22 +1120,22 @@ function WhosWho() {
 
         {/* ── FINAL TV ── */}
         {screen === "final" && isTV && (
-          <div className="tv-screen" style={{ alignItems: "center", justifyContent: "center", gap: 40 }}>
-            <WhosWhoLogo size={52} />
-            <div style={{ fontSize: 72 }}>🏆</div>
-            <div style={{ fontSize: 56, fontWeight: 900, textAlign: "center" }}>
+          <div className="tv-screen" style={{ alignItems: "center", justifyContent: "center", gap: 48 }}>
+            <WhosWhoLogo size={64} />
+            <div style={{ fontSize: 96 }}>🏆</div>
+            <div style={{ fontSize: 72, fontWeight: 900, textAlign: "center" }}>
               {scores[1] === scores[2] ? t.tie : scores[1] > scores[2] ? t.wins(teamNames[1]) : t.wins(teamNames[2])}
             </div>
-            <div style={{ display: "flex", gap: 80, fontSize: 36, fontWeight: 900 }}>
+            <div style={{ display: "flex", gap: 96, fontSize: 48, fontWeight: 900 }}>
               <div style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</div>
               <div style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</div>
             </div>
-            <div style={{ display: "flex", gap: 20 }}>
-              <button onClick={() => setScreen("rounds")} style={{ padding: "18px 40px", borderRadius: 16, fontWeight: 700, fontSize: 20, background: "#1C1F30" }}>
+            <div style={{ display: "flex", gap: 24 }}>
+              <button onClick={() => setScreen("rounds")} style={{ padding: "22px 56px", borderRadius: 16, fontWeight: 700, fontSize: 26, background: "#1C1F30" }}>
                 {dir === "rtl" ? "▶" : "◀"} {t.back}
               </button>
-              <button onClick={resetGame} style={{ padding: "18px 40px", borderRadius: 16, fontWeight: 900, fontSize: 20, background: "#E8A33D", color: "#12141F", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{fontSize:22}}>↺</span> {t.newGame}
+              <button onClick={resetGame} style={{ padding: "22px 56px", borderRadius: 16, fontWeight: 900, fontSize: 26, background: "#E8A33D", color: "#12141F", display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{fontSize:28}}>↺</span> {t.newGame}
               </button>
             </div>
           </div>
