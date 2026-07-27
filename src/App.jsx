@@ -242,6 +242,8 @@ function WhosWho() {
     setIsTVManual(next);
     if (next) {
       (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => {})).call(document.documentElement);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
     }
   }
 
