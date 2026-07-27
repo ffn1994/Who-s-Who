@@ -226,8 +226,23 @@ function WhosWho() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+  useEffect(() => {
+    function onFSChange() {
+      if (!document.fullscreenElement) setIsTVManual(false);
+    }
+    document.addEventListener("fullscreenchange", onFSChange);
+    document.addEventListener("webkitfullscreenchange", onFSChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFSChange);
+      document.removeEventListener("webkitfullscreenchange", onFSChange);
+    };
+  }, []);
   function toggleTV() {
-    setIsTVManual((v) => !v);
+    const next = !isTVManual;
+    setIsTVManual(next);
+    if (next) {
+      (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => {})).call(document.documentElement);
+    }
   }
 
   const [screen, setScreen] = useState("counts");
