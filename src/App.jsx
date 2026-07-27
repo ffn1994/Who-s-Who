@@ -441,26 +441,27 @@ function WhosWho() {
         .tv-card { background:#181B2A; border-radius:20px; box-shadow:0 8px 30px rgba(0,0,0,0.35); }
       `}</style>
 
-      <button
-        onClick={() => setLang((l) => {
-          const nl = l === "ar" ? "en" : "ar";
-          setTeamNames((prev) => ({
-            1: prev[1] === STR[l].defaultTeam1 ? STR[nl].defaultTeam1 : prev[1],
-            2: prev[2] === STR[l].defaultTeam2 ? STR[nl].defaultTeam2 : prev[2],
-          }));
-          return nl;
-        })}
-        className="active:scale-95"
-        style={{ position: "fixed", top: 12, insetInlineEnd: 12, zIndex: 50, background: "#1C1F30", color: "#E8A33D", fontWeight: 900, fontSize: 12, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
-      >
-        {lang === "ar" ? "EN" : "AR"}
-      </button>
-
-      <button onClick={toggleTV} className="active:scale-95"
-        style={{ position: "fixed", top: 12, insetInlineStart: 12, zIndex: 50, background: isTVManual ? "#E8A33D" : "#1C1F30", color: isTVManual ? "#12141F" : "#F2EDE3", fontWeight: 900, fontSize: 16, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
-        title="TV Mode">
-        📺
-      </button>
+      <div style={{ position: "fixed", top: 12, left: 12, zIndex: 50, display: "flex", flexDirection: "row", gap: 8 }}>
+        <button onClick={toggleTV} className="active:scale-95"
+          style={{ background: isTVManual ? "#E8A33D" : "#1C1F30", color: isTVManual ? "#12141F" : "#F2EDE3", fontWeight: 900, fontSize: 16, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+          title="TV Mode">
+          📺
+        </button>
+        <button
+          onClick={() => setLang((l) => {
+            const nl = l === "ar" ? "en" : "ar";
+            setTeamNames((prev) => ({
+              1: prev[1] === STR[l].defaultTeam1 ? STR[nl].defaultTeam1 : prev[1],
+              2: prev[2] === STR[l].defaultTeam2 ? STR[nl].defaultTeam2 : prev[2],
+            }));
+            return nl;
+          })}
+          className="active:scale-95"
+          style={{ background: "#1C1F30", color: "#E8A33D", fontWeight: 900, fontSize: 12, padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+        >
+          {lang === "ar" ? "EN" : "AR"}
+        </button>
+      </div>
 
       <div className={isTV ? "" : "max-w-md mx-auto min-h-screen flex flex-col"}>
 
