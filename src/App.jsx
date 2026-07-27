@@ -200,11 +200,11 @@ function WhosWhoLogo({ size = 64, mini = false }) {
   const divW = mini ? fs * 2 : fs * 2.5;
   return (
     <div style={{ lineHeight: 1, textAlign: "center" }}>
-      <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: fs, letterSpacing: 3, color: "#E8A33D", textShadow: "0 2px 16px rgba(232,163,61,0.5)" }}>
+      <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: fs, letterSpacing: 3, color: "#E8A33D", textShadow: "0 2px 16px rgba(232,163,61,0.5)", direction: "ltr" }}>
         WHO'S
       </div>
       <div style={{ height: 2, margin: "1px auto 0", width: divW, background: "linear-gradient(to right,transparent,#E8A33D 35%,#3DB8A8 65%,transparent)", borderRadius: 4 }} />
-      <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: fs, letterSpacing: 3, lineHeight: 1 }}>
+      <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: fs, letterSpacing: 3, lineHeight: 1, direction: "ltr" }}>
         <span style={{ color: "#E8A33D", textShadow: "0 2px 16px rgba(232,163,61,0.5)" }}>WHO</span>
         <span style={{ color: "#3ECFBE", textShadow: "0 0 16px rgba(61,184,168,0.8)" }}>?</span>
       </div>
