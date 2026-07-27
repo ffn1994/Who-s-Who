@@ -1120,23 +1120,128 @@ function WhosWho() {
 
         {/* ── FINAL TV ── */}
         {screen === "final" && isTV && (
-          <div className="tv-screen" style={{ alignItems: "center", justifyContent: "center", gap: 48 }}>
-            <WhosWhoLogo size={64} />
-            <div style={{ fontSize: 96 }}>🏆</div>
-            <div style={{ fontSize: 72, fontWeight: 900, textAlign: "center" }}>
-              {scores[1] === scores[2] ? t.tie : scores[1] > scores[2] ? t.wins(teamNames[1]) : t.wins(teamNames[2])}
-            </div>
-            <div style={{ display: "flex", gap: 96, fontSize: 48, fontWeight: 900 }}>
-              <div style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</div>
-              <div style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</div>
-            </div>
-            <div style={{ display: "flex", gap: 24 }}>
-              <button onClick={() => setScreen("rounds")} style={{ padding: "22px 56px", borderRadius: 16, fontWeight: 700, fontSize: 26, background: "#1C1F30" }}>
-                {dir === "rtl" ? "▶" : "◀"} {t.back}
-              </button>
-              <button onClick={resetGame} style={{ padding: "22px 56px", borderRadius: 16, fontWeight: 900, fontSize: 26, background: "#E8A33D", color: "#12141F", display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{fontSize:28}}>↺</span> {t.newGame}
-              </button>
+          <div className="tv-screen" style={{ alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+            <style>{`
+              @keyframes ww-fall {
+                0%   { opacity:0; transform:translateY(0) rotateZ(0deg); }
+                6%   { opacity:1; }
+                94%  { opacity:1; }
+                100% { opacity:0; transform:translateY(102vh) rotateZ(540deg); }
+              }
+              @keyframes ww-sp {
+                0%   { opacity:0; transform:translateY(0) scale(.6) rotate(0deg); }
+                15%  { opacity:1; }
+                85%  { opacity:1; }
+                100% { opacity:0; transform:translateY(-110px) scale(1.3) rotate(360deg); }
+              }
+              @keyframes ww-bounce {
+                from { transform:translateY(0) scale(1); }
+                to   { transform:translateY(-20px) scale(1.12); }
+              }
+              @keyframes ww-glow {
+                from { text-shadow:0 0 20px rgba(255,215,0,.5), 0 0 40px rgba(232,163,61,.3); }
+                to   { text-shadow:0 0 60px rgba(255,215,0,1),  0 0 120px rgba(232,163,61,.8); }
+              }
+              @keyframes ww-pulse {
+                from { transform:scale(1); }
+                to   { transform:scale(1.06); }
+              }
+              .ww-c { position:fixed; top:-14px; width:12px; height:9px; border-radius:3px; animation:ww-fall linear infinite; }
+              .ww-spark { position:fixed; font-size:28px; animation:ww-sp linear infinite; opacity:0; pointer-events:none; }
+            `}</style>
+
+            {/* confetti */}
+            {[
+              {l:"3%",  bg:"#E8A33D", d:3.1, dl:0,   w:14},
+              {l:"8%",  bg:"#3ECFBE", d:2.7, dl:.4},
+              {l:"14%", bg:"#E85D5D", d:3.5, dl:1.1},
+              {l:"19%", bg:"#9B8CE8", d:2.9, dl:.2},
+              {l:"25%", bg:"#FFD700", d:3.3, dl:1.8, w:15},
+              {l:"31%", bg:"#E8A33D", d:2.5, dl:.7},
+              {l:"37%", bg:"#3ECFBE", d:3.8, dl:.3},
+              {l:"42%", bg:"#F2EDE3", d:2.6, dl:1.5, h:11},
+              {l:"48%", bg:"#FFD700", d:3.2, dl:.9},
+              {l:"54%", bg:"#E85D5D", d:2.8, dl:.1},
+              {l:"59%", bg:"#9B8CE8", d:3.6, dl:1.3, w:13},
+              {l:"65%", bg:"#3ECFBE", d:2.4, dl:.6},
+              {l:"71%", bg:"#E8A33D", d:3.0, dl:1.9},
+              {l:"76%", bg:"#FFD700", d:2.9, dl:.4,  h:13},
+              {l:"82%", bg:"#E85D5D", d:3.4, dl:1.0},
+              {l:"87%", bg:"#F2EDE3", d:2.7, dl:.8},
+              {l:"92%", bg:"#9B8CE8", d:3.1, dl:1.6, w:11},
+              {l:"97%", bg:"#3ECFBE", d:2.5, dl:.3},
+              {l:"6%",  bg:"#FFD700", d:4.0, dl:2.2, w:10},
+              {l:"22%", bg:"#E8A33D", d:3.7, dl:1.4},
+              {l:"33%", bg:"#E85D5D", d:2.6, dl:2.5, h:10},
+              {l:"45%", bg:"#9B8CE8", d:3.3, dl:.5},
+              {l:"56%", bg:"#3ECFBE", d:2.9, dl:2.0, w:15},
+              {l:"67%", bg:"#FFD700", d:3.5, dl:1.2},
+              {l:"78%", bg:"#E8A33D", d:2.8, dl:2.8},
+              {l:"89%", bg:"#F2EDE3", d:3.2, dl:.7,  h:8},
+              {l:"12%", bg:"#3ECFBE", d:4.1, dl:1.7},
+              {l:"50%", bg:"#E85D5D", d:2.5, dl:3.0, w:13},
+              {l:"73%", bg:"#E8A33D", d:3.6, dl:.2},
+              {l:"95%", bg:"#9B8CE8", d:2.7, dl:2.3},
+            ].map((c, i) => (
+              <span key={i} className="ww-c" style={{
+                left: c.l, background: c.bg,
+                width: c.w ? c.w : 12, height: c.h ? c.h : 9,
+                animationDuration: c.d + "s", animationDelay: c.dl + "s"
+              }} />
+            ))}
+
+            {/* sparkles */}
+            {[
+              {l:"10%", b:"18%", d:2.2, dl:0,   e:"✨"},
+              {l:"25%", b:"8%",  d:2.8, dl:.6,  e:"⭐"},
+              {l:"40%", b:"22%", d:2.0, dl:1.2, e:"✨"},
+              {l:"60%", b:"12%", d:2.5, dl:.3,  e:"🌟"},
+              {l:"75%", b:"20%", d:2.3, dl:.9,  e:"✨"},
+              {l:"88%", b:"10%", d:2.7, dl:1.5, e:"⭐"},
+            ].map((s, i) => (
+              <span key={i} className="ww-spark" style={{
+                left: s.l, bottom: s.b,
+                animationDuration: s.d + "s", animationDelay: s.dl + "s"
+              }}>{s.e}</span>
+            ))}
+
+            {/* center content */}
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:22, textAlign:"center", position:"relative", zIndex:1 }}>
+              <div style={{ opacity:.5, fontSize:22, letterSpacing:6, color:"#E8A33D", direction:"ltr" }}>WHO'S WHO</div>
+
+              <div style={{ fontSize:110, lineHeight:1, animation:"ww-bounce .85s ease-in-out infinite alternate", filter:"drop-shadow(0 0 32px rgba(232,163,61,.95))" }}>🏆</div>
+
+              {scores[1] === scores[2] ? (
+                <div style={{ fontSize:88, fontWeight:900, color:"#FFD700", animation:"ww-glow 1.2s ease-in-out infinite alternate" }}>
+                  {t.tie}
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize:88, fontWeight:900, letterSpacing:4, color:"#FFD700", animation:"ww-glow 1.2s ease-in-out infinite alternate" }}>
+                    مبروك!
+                  </div>
+                  <div style={{ fontSize:20, letterSpacing:5, opacity:.5 }}>الفائز</div>
+                  <div style={{ fontSize:62, fontWeight:900, color:"#3ECFBE", textShadow:"0 0 30px rgba(62,207,190,.8)", animation:"ww-pulse 1s ease-in-out infinite alternate" }}>
+                    {scores[1] > scores[2] ? teamNames[1] : teamNames[2]}
+                  </div>
+                </>
+              )}
+
+              <div style={{ width:280, height:2, borderRadius:4, background:"linear-gradient(to right, transparent, #E8A33D 40%, #3ECFBE 60%, transparent)" }} />
+
+              <div style={{ display:"flex", gap:80, fontSize:38, fontWeight:900 }}>
+                <span style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</span>
+                <span style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</span>
+              </div>
+
+              <div style={{ display:"flex", gap:20, marginTop:8 }}>
+                <button onClick={() => setScreen("rounds")} style={{ padding:"16px 52px", borderRadius:999, fontWeight:700, fontSize:24, background:"#1C1F30", color:"#F2EDE3", border:"none", cursor:"pointer" }}>
+                  {dir === "rtl" ? "▶" : "◀"} {t.back}
+                </button>
+                <button onClick={resetGame} style={{ padding:"16px 52px", borderRadius:999, fontWeight:900, fontSize:24, background:"#E8A33D", color:"#12141F", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+                  <span style={{fontSize:26}}>↺</span> {t.newGame}
+                </button>
+              </div>
             </div>
           </div>
         )}
