@@ -13,6 +13,7 @@ const OPEN_QUESTIONS = [
 ];
 const MAX_ORG_PHOTOS = 15;
 const TIMER_DEFAULT = 30;
+const FACEOFF_TIMER = 60;
 
 const FACEOFF_QUESTIONS = [
   { ar: "قولنا موقف زلقت أو طحت قدام الناس — مضحك! 😬", en: "Tell us about a time you slipped or fell in front of people — make it funny! 😬" },
@@ -234,14 +235,15 @@ function WhosWho() {
   // Auto-start timer when entering a round screen or advancing a card
   useEffect(() => {
     if (["round1", "round2", "round3", "round4"].includes(screen)) {
-      setTimerSeconds(TIMER_DEFAULT);
+      setTimerSeconds(screen === "round3" ? FACEOFF_TIMER : TIMER_DEFAULT);
       setTimerRunning(true);
     } else {
       setTimerRunning(false);
     }
   }, [screen, deckIdx, faceoffPairIdx]);
 
-  function resetTimer() { setTimerSeconds(TIMER_DEFAULT); setTimerRunning(true); }
+  const timerMax = screen === "round3" ? FACEOFF_TIMER : TIMER_DEFAULT;
+  function resetTimer() { setTimerSeconds(timerMax); setTimerRunning(true); }
 
   // ── Registration flow ────────────────────────────────────────────
   function startRegistration() { setScreen("organizer"); }
@@ -362,7 +364,7 @@ function WhosWho() {
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "#1C1F30" }}>
         <div className="h-full rounded-full" style={{
-          width: `${(timerSeconds / TIMER_DEFAULT) * 100}%`,
+          width: `${(timerSeconds / timerMax) * 100}%`,
           background: timerColor,
           transition: "width 0.95s linear, background 0.3s"
         }} />
