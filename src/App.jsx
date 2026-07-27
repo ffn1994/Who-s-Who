@@ -217,6 +217,21 @@ function WhosWho() {
   const t = STR[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
 
+  const [appScale, setAppScale] = useState(1);
+  useEffect(() => {
+    function calcScale() {
+      const mobileW = 448;
+      const mobileH = 844;
+      const scaleX = window.innerWidth / mobileW;
+      const scaleY = window.innerHeight / mobileH;
+      const s = Math.min(scaleX, scaleY);
+      setAppScale(s > 1 ? s : 1);
+    }
+    calcScale();
+    window.addEventListener("resize", calcScale);
+    return () => window.removeEventListener("resize", calcScale);
+  }, []);
+
   const [screen, setScreen] = useState("counts");
   const [teamNames, setTeamNames] = useState({ 1: STR.ar.defaultTeam1, 2: STR.ar.defaultTeam2 });
   const [qLabels, setQLabels] = useState({ ar: defaultQLabels("ar"), en: defaultQLabels("en") });
@@ -406,6 +421,10 @@ function WhosWho() {
         @keyframes flipIn { from { opacity: 0; transform: scale(0.92) translateY(8px);} to { opacity: 1; transform: scale(1) translateY(0);} }
         input { outline: none; }
         input:focus { box-shadow: 0 0 0 2px #E8A33D; }
+        .app-scaler { transform-origin: top center; }
+        @media (min-width: 600px) {
+          .app-scaler { transform: scale(var(--app-scale,1)); height: calc(var(--app-h,100vh)); }
+        }
       `}</style>
 
       <button
@@ -423,7 +442,8 @@ function WhosWho() {
         {lang === "ar" ? "EN" : "AR"}
       </button>
 
-      <div className="max-w-md mx-auto min-h-screen flex flex-col">
+      <div className="app-scaler max-w-md mx-auto flex flex-col"
+        style={{ "--app-scale": appScale, "--app-h": `${844}px`, minHeight: appScale > 1 ? 844 : "100vh", width: 448 }}>
 
         {/* Score header */}
         {["rounds","round1","round2","round3","round4"].includes(screen) && (
