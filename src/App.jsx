@@ -227,9 +227,7 @@ function WhosWho() {
     return () => window.removeEventListener("resize", check);
   }, []);
   function toggleTV() {
-    const next = !isTVManual;
-    setIsTVManual(next);
-    if (next) document.documentElement.requestFullscreen?.().catch(() => {});
+    setIsTVManual((v) => !v);
   }
 
   const [screen, setScreen] = useState("counts");
