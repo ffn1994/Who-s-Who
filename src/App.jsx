@@ -217,19 +217,12 @@ function WhosWho() {
   const t = STR[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
 
-  const [appScale, setAppScale] = useState(1);
+  const [isTV, setIsTV] = useState(false);
   useEffect(() => {
-    function calcScale() {
-      const mobileW = 448;
-      const mobileH = 844;
-      const scaleX = window.innerWidth / mobileW;
-      const scaleY = window.innerHeight / mobileH;
-      const s = Math.min(scaleX, scaleY);
-      setAppScale(s > 1 ? s : 1);
-    }
-    calcScale();
-    window.addEventListener("resize", calcScale);
-    return () => window.removeEventListener("resize", calcScale);
+    function check() { setIsTV(window.innerWidth >= 900 && window.innerWidth > window.innerHeight); }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   const [screen, setScreen] = useState("counts");
@@ -421,10 +414,9 @@ function WhosWho() {
         @keyframes flipIn { from { opacity: 0; transform: scale(0.92) translateY(8px);} to { opacity: 1; transform: scale(1) translateY(0);} }
         input { outline: none; }
         input:focus { box-shadow: 0 0 0 2px #E8A33D; }
-        .app-scaler { transform-origin: top center; }
-        @media (min-width: 600px) {
-          .app-scaler { transform: scale(var(--app-scale,1)); height: calc(var(--app-h,100vh)); }
-        }
+        .tv-screen { display:flex; flex-direction:column; width:100vw; height:100vh; overflow:hidden; }
+        .tv-body { flex:1; display:flex; overflow:hidden; }
+        .tv-card { background:#181B2A; border-radius:20px; box-shadow:0 8px 30px rgba(0,0,0,0.35); }
       `}</style>
 
       <button
@@ -442,8 +434,7 @@ function WhosWho() {
         {lang === "ar" ? "EN" : "AR"}
       </button>
 
-      <div className="app-scaler max-w-md mx-auto flex flex-col"
-        style={{ "--app-scale": appScale, "--app-h": `${844}px`, minHeight: appScale > 1 ? 844 : "100vh", width: 448 }}>
+      <div className={isTV ? "" : "max-w-md mx-auto min-h-screen flex flex-col"}>
 
         {/* Score header */}
         {["rounds","round1","round2","round3","round4"].includes(screen) && (
@@ -460,7 +451,7 @@ function WhosWho() {
         )}
 
         {/* ── COUNTS ── */}
-        {screen === "counts" && (
+        {screen === "counts" && !isTV && (
           <div className="flex-1 flex flex-col px-5 py-10 gap-8 justify-center">
             <div className="flex flex-col items-center mb-2 gap-3">
               <WhosWhoLogo size={64} />
@@ -507,6 +498,62 @@ function WhosWho() {
               <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
             )}
             <div className="text-center text-xs opacity-45 leading-relaxed">{t.privacyNote}</div>
+          </div>
+        )}
+
+        {/* ── COUNTS TV ── */}
+        {screen === "counts" && isTV && (
+          <div className="tv-screen" style={{ padding: "32px 48px", gap: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 8 }}>
+              <WhosWhoLogo size={52} />
+              <div style={{ opacity: 0.5, fontSize: 18 }}>{t.subtitle}</div>
+            </div>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1px 1fr", gap: 0, overflow: "hidden" }}>
+              {[1, 2].map((team, idx) => (
+                <div key={team} style={{ padding: "0 48px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 24 }}>
+                  {idx === 1 && <div style={{ position: "absolute", left: "50%", top: "15%", bottom: "10%", width: 1, background: "rgba(255,255,255,0.06)" }} />}
+                  <div className="tv-card" style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{fontSize:24}}>👥</span>
+                      <input value={teamNames[team]} onChange={(e) => setTeamNames((tn) => ({ ...tn, [team]: e.target.value }))}
+                        style={{ background: "transparent", fontWeight: 900, fontSize: 28, flex: 1, borderBottom: `2px solid ${TEAM_META[team].color}`, color: TEAM_META[team].color, paddingBottom: 4 }} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 18, opacity: 0.7 }}>{t.playersCount}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                        <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.max(1, c[team] - 1) }))} style={{ width: 48, height: 48, borderRadius: "50%", background: "#12141F", fontSize: 24, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                        <span style={{ fontSize: 40, fontWeight: 900, width: 48, textAlign: "center" }}>{counts[team]}</span>
+                        <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.min(12, c[team] + 1) }))} style={{ width: 48, height: 48, borderRadius: "50%", background: "#12141F", fontSize: 24, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="tv-card" style={{ padding: "20px 32px", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.45, marginBottom: 4 }}>{t.customizeQuestions}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {QUESTIONS.map((q, i) => (
+                        <input key={q.key} value={qLabels[lang][i]} onChange={(e) => { const n=[...qLabels[lang]]; n[i]=e.target.value; setQLabels((p)=>({...p,[lang]:n})); }}
+                          style={{ background: "#12141F", borderRadius: 12, padding: "10px 14px", fontSize: 14 }} />
+                      ))}
+                    </div>
+                    {OPEN_QUESTIONS.map((q, i) => (
+                      <input key={q.key} value={openQLabels[lang][i]} onChange={(e) => { const n=[...openQLabels[lang]]; n[i]=e.target.value; setOpenQLabels((p)=>({...p,[lang]:n})); }}
+                        style={{ background: "#12141F", borderRadius: 12, padding: "10px 14px", fontSize: 14 }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 48px" }}>
+              {players.length > 0 ? (
+                <div style={{ display: "flex", gap: 16 }}>
+                  <button onClick={continueRegistration} style={{ flex: 1, padding: "18px 0", borderRadius: 16, fontWeight: 900, fontSize: 20, background: "#E8A33D", color: "#12141F" }}>{t.continueReg(players.length, queue.length)}</button>
+                  <button onClick={resetRegistration} style={{ flex: 1, padding: "18px 0", borderRadius: 16, fontWeight: 700, fontSize: 18, background: "#1C1F30" }}>{t.startOver}</button>
+                </div>
+              ) : (
+                <button onClick={startRegistration} style={{ width: "100%", padding: "20px 0", borderRadius: 16, fontWeight: 900, fontSize: 22, background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+              )}
+              <div style={{ textAlign: "center", fontSize: 12, opacity: 0.4 }}>{t.privacyNote}</div>
+            </div>
           </div>
         )}
 
@@ -590,8 +637,41 @@ function WhosWho() {
           </div>
         )}
 
+        {/* ── ROUNDS MENU TV ── */}
+        {screen === "rounds" && isTV && (
+          <div className="tv-screen" style={{ padding: "40px 80px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+              <WhosWhoLogo size={44} />
+              <div style={{ display: "flex", gap: 48, fontSize: 28, fontWeight: 900 }}>
+                <span style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</span>
+                <span style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</span>
+              </div>
+              <div style={{ fontSize: 16, opacity: 0.5 }}>{t.passAnyone}</div>
+            </div>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 20 }}>
+              {[
+                { label: t.round1Title, name: t.round1Name, color: "#E8A33D", action: startRound1, enabled: true, desc: t.round1Desc },
+                { label: t.round2Title, name: t.round2Name, color: "#3DB8A8", action: startRound2, enabled: triviaOk, desc: triviaOk ? t.round2Desc : t.triviaLocked },
+                { label: t.round3Title, name: t.round3Name, color: "#E85D5D", action: startRound3, enabled: true, desc: t.round3Desc },
+                { label: t.round4Title, name: t.round4Name, color: "#9B8CE8", action: startRound4, enabled: true, desc: t.round4Desc },
+              ].map((r, i) => (
+                <button key={i} onClick={r.enabled ? r.action : undefined}
+                  className="tv-card" style={{ padding: "32px 40px", textAlign: "start", opacity: r.enabled ? 1 : 0.35, cursor: r.enabled ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.5 }}>{r.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: r.color }}>{r.name}</div>
+                  <div style={{ fontSize: 14, opacity: 0.6 }}>{r.desc}</div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
+              <button onClick={() => setScreen("final")} style={{ flex: 1, padding: "16px 0", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>🏆 {t.endGame}</button>
+              <button onClick={resetGame} style={{ flex: 1, padding: "16px 0", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>↺ {t.newGame}</button>
+            </div>
+          </div>
+        )}
+
         {/* ── ROUNDS MENU ── */}
-        {screen === "rounds" && (
+        {screen === "rounds" && !isTV && (
           <div className="flex-1 flex flex-col px-5 py-8 gap-4">
             <div className="text-center mb-2">
               <div className="text-2xl font-black" style={{ color: "#E8A33D" }}>{t.chooseRound}</div>
@@ -634,8 +714,95 @@ function WhosWho() {
           </div>
         )}
 
+        {/* ── ROUND 1 & 2 TV ── */}
+        {(screen === "round1" || screen === "round2") && isTV && (() => {
+          const isR1 = screen === "round1";
+          const label = isR1 ? t.guessingLabel : t.triviaLabel;
+          return (
+            <div className="tv-screen">
+              {/* top bar */}
+              <div style={{ background: "#181B2A", padding: "14px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #1C1F30" }}>
+                <WhosWhoLogo size={32} />
+                <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.5 }}>{label} · {deck.length ? deckIdx + 1 : 0} / {deck.length}</div>
+                <div style={{ display: "flex", gap: 32, fontWeight: 900, fontSize: 22 }}>
+                  <span style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</span>
+                  <span style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</span>
+                </div>
+              </div>
+              {/* timer */}
+              <div style={{ height: 6, background: "#1C1F30" }}>
+                <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
+              </div>
+              {/* body */}
+              <div className="tv-body" style={{ padding: "32px 64px", gap: 32, alignItems: "stretch" }}>
+                {/* left: team banner + timer controls */}
+                <div style={{ width: 260, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
+                  {deck.length > 0 && (
+                    <div className="tv-card" style={{ padding: "28px 24px", textAlign: "center" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.5, marginBottom: 8 }}>{t.questionFor(teamNames[deck[deckIdx].askedTeam])}</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: TEAM_META[deck[deckIdx].askedTeam].color }}>{teamNames[deck[deckIdx].askedTeam]}</div>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                    <span style={{ fontSize: 32, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
+                    <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 40, height: 40, borderRadius: "50%", background: "#1C1F30", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{timerRunning ? "⏸" : "▶"}</button>
+                    <button onClick={resetTimer} style={{ width: 40, height: 40, borderRadius: "50%", background: "#1C1F30", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
+                  </div>
+                </div>
+                {/* center: card */}
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {deck.length === 0 ? (
+                    <div style={{ opacity: 0.6, fontSize: 20, textAlign: "center" }}>{t.noQuestions}</div>
+                  ) : (
+                    <div className="tv-card flip-in" style={{ width: "100%", padding: "56px 64px", textAlign: "center" }} key={deckIdx}>
+                      {isR1 ? (
+                        <>
+                          <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{t.personLabel}</div>
+                          <div style={{ fontSize: 52, fontWeight: 900, marginBottom: 24 }}>{deck[deckIdx].player.name}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.5, marginBottom: 12 }}>{t.attrNeeded}</div>
+                          <div style={{ fontSize: 32, fontWeight: 900, color: "#E8A33D", marginBottom: 24 }}>{deck[deckIdx].attrLabel}</div>
+                          {revealed ? (
+                            <div className="pulse" style={{ fontSize: 44, fontWeight: 900, color: "#3DB8A8" }}>{deck[deckIdx].value}</div>
+                          ) : (
+                            <button onClick={() => setRevealed(true)} style={{ margin: "0 auto", display: "flex", alignItems: "center", gap: 10, padding: "16px 32px", borderRadius: 14, fontWeight: 700, fontSize: 20, background: "#E8A33D", color: "#12141F" }}>
+                              <span style={{fontSize:22}}>👁️</span> {t.revealAnswer}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.5, marginBottom: 16 }}>{deck[deckIdx].attrLabel}</div>
+                          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.3, marginBottom: 20 }}>{deck[deckIdx].value}</div>
+                          <div style={{ fontSize: 20, opacity: 0.7, marginBottom: 24 }}>{t.whoseAnswer}</div>
+                          {!revealed ? (
+                            <button onClick={() => setRevealed(true)} style={{ margin: "0 auto", display: "flex", alignItems: "center", gap: 10, padding: "16px 32px", borderRadius: 14, fontWeight: 700, fontSize: 20, background: "#3DB8A8", color: "#12141F" }}>
+                              <span style={{fontSize:22}}>👁️</span> {t.revealName}
+                            </button>
+                          ) : (
+                            <div className="pulse" style={{ fontSize: 44, fontWeight: 900, color: "#3DB8A8" }}>{deck[deckIdx].player.name}</div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* right: win buttons */}
+                {deck.length > 0 && (
+                  <div style={{ width: 260, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                    <button onClick={() => { award({ [deck[deckIdx].askedTeam]: 1 }); nextCard(); }}
+                      style={{ padding: "24px 16px", borderRadius: 16, fontWeight: 900, fontSize: 20, background: TEAM_META[deck[deckIdx].askedTeam].bg, color: TEAM_META[deck[deckIdx].askedTeam].color }}>
+                      {teamNames[deck[deckIdx].askedTeam]} {t.correct}
+                    </button>
+                    <button onClick={() => nextCard()} style={{ padding: "20px 16px", borderRadius: 16, fontWeight: 700, fontSize: 18, background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── ROUND 1 & 2 ── */}
-        {(screen === "round1" || screen === "round2") && (
+        {(screen === "round1" || screen === "round2") && !isTV && (
           <div className="flex-1 flex flex-col px-5 py-6 gap-4">
             <div className="text-center text-xs font-bold opacity-50">
               {screen === "round1" ? t.guessingLabel : t.triviaLabel} · {deck.length ? deckIdx + 1 : 0} / {deck.length}
@@ -695,8 +862,52 @@ function WhosWho() {
           </div>
         )}
 
+        {/* ── ROUND 4 TV ── */}
+        {screen === "round4" && isTV && (
+          <div className="tv-screen">
+            <div style={{ background: "#181B2A", padding: "14px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #1C1F30" }}>
+              <WhosWhoLogo size={32} />
+              <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.5 }}>{t.photoGuessLabel} · {deck.length ? deckIdx + 1 : 0} / {deck.length}</div>
+              <div style={{ display: "flex", gap: 32, fontWeight: 900, fontSize: 22 }}>
+                <span style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</span>
+                <span style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</span>
+              </div>
+            </div>
+            <div style={{ height: 6, background: "#1C1F30" }}>
+              <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
+            </div>
+            <div className="tv-body" style={{ padding: "32px 80px", gap: 48, alignItems: "center" }}>
+              {deck.length === 0 ? (
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.6, fontSize: 20 }}>{t.noPhotos}</div>
+              ) : (
+                <>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div className="tv-card flip-in" style={{ overflow: "hidden", maxHeight: "calc(100vh - 200px)" }} key={deckIdx}>
+                      <img src={deck[deckIdx].src} style={{ width: "100%", maxHeight: "55vh", objectFit: "cover" }} />
+                      <div style={{ padding: "24px", textAlign: "center" }}>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: "#9B8CE8" }}>{t.photoQuestion}</div>
+                        <div style={{ fontSize: 14, opacity: 0.4, marginTop: 6 }}>{t.fastestWins}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                    <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 28, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
+                      <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 40, height: 40, borderRadius: "50%", background: "#1C1F30", fontSize: 16 }}>{timerRunning ? "⏸" : "▶"}</button>
+                      <button onClick={resetTimer} style={{ width: 40, height: 40, borderRadius: "50%", background: "#1C1F30", fontSize: 18 }}>↺</button>
+                    </div>
+                    <button onClick={() => { award({ 1: 1 }); nextCard(); }} style={{ padding: "22px", borderRadius: 16, fontWeight: 900, fontSize: 22, background: TEAM_META[1].bg, color: TEAM_META[1].color }}>{teamNames[1]} ✓</button>
+                    <button onClick={() => { award({ 2: 1 }); nextCard(); }} style={{ padding: "22px", borderRadius: 16, fontWeight: 900, fontSize: 22, background: TEAM_META[2].bg, color: TEAM_META[2].color }}>{teamNames[2]} ✓</button>
+                    <button onClick={() => nextCard()} style={{ padding: "16px", borderRadius: 14, fontWeight: 700, fontSize: 16, background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── ROUND 4 ── */}
-        {screen === "round4" && (
+        {screen === "round4" && !isTV && (
           <div className="flex-1 flex flex-col px-5 py-6 gap-4">
             <div className="text-center text-xs font-bold opacity-50">{t.photoGuessLabel} · {deck.length ? deckIdx + 1 : 0} / {deck.length}</div>
             {timerBar}
@@ -723,8 +934,91 @@ function WhosWho() {
           </div>
         )}
 
+        {/* ── ROUND 3 TV ── */}
+        {screen === "round3" && isTV && faceoffOrder.length > 0 && (() => {
+          const storyteller = faceoffOrder[faceoffPairIdx];
+          const opp = storyteller.team === 1 ? 2 : 1;
+          function advanceFaceoff() {
+            const ni = faceoffPairIdx + 1;
+            setFaceoffLiveQIdx((idx) => randomFaceoffQ(idx));
+            setFaceoffShufflesLeft(3);
+            if (ni >= faceoffOrder.length) setScreen("rounds");
+            else setFaceoffPairIdx(ni);
+          }
+          return (
+            <div className="tv-screen">
+              <div style={{ background: "#181B2A", padding: "14px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #1C1F30" }}>
+                <WhosWhoLogo size={32} />
+                <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.5 }}>{t.faceoffLabel} · {faceoffPairIdx + 1} / {faceoffOrder.length}</div>
+                <div style={{ display: "flex", gap: 32, fontWeight: 900, fontSize: 22 }}>
+                  <span style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</span>
+                  <span style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</span>
+                </div>
+              </div>
+              <div style={{ height: 6, background: "#1C1F30" }}>
+                <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
+              </div>
+              <div className="tv-body" style={{ padding: "28px 48px", gap: 28, alignItems: "stretch" }}>
+                {/* left: storyteller */}
+                <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                  <div className="tv-card" style={{ padding: "32px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 14, opacity: 0.5, marginBottom: 10 }}>{teamNames[storyteller.team]}</div>
+                    <div style={{ fontSize: 36, fontWeight: 900, color: TEAM_META[storyteller.team].color }}>{storyteller.name}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                    <span style={{ fontSize: 28, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
+                    <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 40, height: 40, borderRadius: "50%", background: "#1C1F30", fontSize: 16 }}>{timerRunning ? "⏸" : "▶"}</button>
+                    <button onClick={resetTimer} style={{ width: 40, height: 40, borderRadius: "50%", background: "#1C1F30", fontSize: 18 }}>↺</button>
+                  </div>
+                </div>
+                {/* center: challenge card */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
+                  <div className="tv-card flip-in" style={{ padding: "48px 56px", textAlign: "center" }} key={faceoffLiveQIdx}>
+                    <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.4, marginBottom: 16 }}>{t.faceoffLabel}</div>
+                    <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1.4 }}>{FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}</div>
+                  </div>
+                  {faceoffShufflesLeft > 0 && (
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <button onClick={nextFaceoffQ} style={{ padding: "14px 28px", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{fontSize:20}}>🔀</span> {t.newQuestion}
+                        <span style={{ borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, background: "#E8A33D", color: "#12141F" }}>{faceoffShufflesLeft}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {/* right: opponent + win buttons */}
+                <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+                  <div className="tv-card" style={{ padding: "24px", textAlign: "center", background: TEAM_META[opp].bg }}>
+                    <div style={{ fontSize: 14, opacity: 0.7, color: TEAM_META[opp].color }}>{t.faceoffChallenge(teamNames[opp])}</div>
+                  </div>
+                  <div style={{ fontSize: 13, textAlign: "center", fontWeight: 700, opacity: 0.4 }}>{t.faceoffWinnerPoints}</div>
+                  <button onClick={() => { award({ [storyteller.team]: 2 }); advanceFaceoff(); }}
+                    style={{ padding: "22px", borderRadius: 16, fontWeight: 900, fontSize: 20, background: TEAM_META[storyteller.team].bg, color: TEAM_META[storyteller.team].color }}>
+                    {t.win(teamNames[storyteller.team])}
+                  </button>
+                  <button onClick={() => { award({ [opp]: 2 }); advanceFaceoff(); }}
+                    style={{ padding: "22px", borderRadius: 16, fontWeight: 900, fontSize: 20, background: TEAM_META[opp].bg, color: TEAM_META[opp].color }}>
+                    {t.win(teamNames[opp])}
+                  </button>
+                  {faceoffPairIdx + 1 < faceoffOrder.length ? (
+                    <button onClick={() => { setFaceoffShufflesLeft(3); setFaceoffLiveQIdx((idx) => randomFaceoffQ(idx)); setFaceoffPairIdx((i) => i + 1); }}
+                      style={{ padding: "14px", borderRadius: 14, fontWeight: 700, fontSize: 16, background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                  ) : (
+                    <button onClick={() => setScreen("rounds")} style={{ padding: "14px", borderRadius: 14, fontWeight: 700, fontSize: 16, background: "#1C1F30" }}>{t.endRound}</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        {screen === "round3" && isTV && faceoffOrder.length === 0 && (
+          <div className="tv-screen" style={{ alignItems: "center", justifyContent: "center" }}>
+            <div style={{ opacity: 0.6, fontSize: 20 }}>{t.needOneEach}</div>
+          </div>
+        )}
+
         {/* ── ROUND 3 ── */}
-        {screen === "round3" && (
+        {screen === "round3" && !isTV && (
           <div className="flex-1 flex flex-col px-5 py-6 gap-4">
             <div className="flex flex-col items-center gap-1">
               <WhosWhoLogo size={36} />
@@ -797,8 +1091,31 @@ function WhosWho() {
           </div>
         )}
 
+        {/* ── FINAL TV ── */}
+        {screen === "final" && isTV && (
+          <div className="tv-screen" style={{ alignItems: "center", justifyContent: "center", gap: 40 }}>
+            <WhosWhoLogo size={52} />
+            <div style={{ fontSize: 72 }}>🏆</div>
+            <div style={{ fontSize: 56, fontWeight: 900, textAlign: "center" }}>
+              {scores[1] === scores[2] ? t.tie : scores[1] > scores[2] ? t.wins(teamNames[1]) : t.wins(teamNames[2])}
+            </div>
+            <div style={{ display: "flex", gap: 80, fontSize: 36, fontWeight: 900 }}>
+              <div style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</div>
+              <div style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</div>
+            </div>
+            <div style={{ display: "flex", gap: 20 }}>
+              <button onClick={() => setScreen("rounds")} style={{ padding: "18px 40px", borderRadius: 16, fontWeight: 700, fontSize: 20, background: "#1C1F30" }}>
+                {dir === "rtl" ? "▶" : "◀"} {t.back}
+              </button>
+              <button onClick={resetGame} style={{ padding: "18px 40px", borderRadius: 16, fontWeight: 900, fontSize: 20, background: "#E8A33D", color: "#12141F", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{fontSize:22}}>↺</span> {t.newGame}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── FINAL ── */}
-        {screen === "final" && (
+        {screen === "final" && !isTV && (
           <div className="flex-1 flex flex-col px-6 py-6 gap-6">
             <button onClick={() => setScreen("rounds")} className="self-start flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold active:scale-95" style={{ background: "#1C1F30" }}>
               <span style={{fontSize:13}}>{dir === "rtl" ? "▶" : "◀"}</span> {t.back}
