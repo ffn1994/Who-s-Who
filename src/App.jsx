@@ -195,6 +195,23 @@ function shuffle(arr) {
   return a;
 }
 
+function WhosWhoLogo({ size = 64, mini = false }) {
+  const fs = mini ? size * 0.6 : size;
+  const divW = mini ? fs * 2 : fs * 2.5;
+  return (
+    <div style={{ lineHeight: 1, textAlign: "center" }}>
+      <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: fs, letterSpacing: 3, color: "#E8A33D", textShadow: "0 2px 16px rgba(232,163,61,0.5)" }}>
+        WHO'S
+      </div>
+      <div style={{ height: 2, margin: "1px auto 0", width: divW, background: "linear-gradient(to right,transparent,#E8A33D 35%,#3DB8A8 65%,transparent)", borderRadius: 4 }} />
+      <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: fs, letterSpacing: 3, lineHeight: 1 }}>
+        <span style={{ color: "#E8A33D", textShadow: "0 2px 16px rgba(232,163,61,0.5)" }}>WHO</span>
+        <span style={{ color: "#3ECFBE", textShadow: "0 0 16px rgba(61,184,168,0.8)" }}>?</span>
+      </div>
+    </div>
+  );
+}
+
 function WhosWho() {
   const [lang, setLang] = useState("ar");
   const t = STR[lang];
@@ -426,16 +443,7 @@ function WhosWho() {
         {screen === "counts" && (
           <div className="flex-1 flex flex-col px-5 py-10 gap-8 justify-center">
             <div className="flex flex-col items-center mb-2 gap-3">
-              <div style={{ lineHeight: 1, textAlign: "center" }}>
-                <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: 64, letterSpacing: 2, background: "linear-gradient(180deg,#FFE08A 0%,#E8A33D 50%,#9A520C 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 2px 12px rgba(232,163,61,0.45))" }}>
-                  WHO'S
-                </div>
-                <div style={{ height: 2, margin: "2px auto 0", width: 160, background: "linear-gradient(to right,transparent,#E8A33D 35%,#3DB8A8 65%,transparent)", borderRadius: 4 }} />
-                <div style={{ fontFamily: "Bangers, Georgia, serif", fontSize: 64, letterSpacing: 2, lineHeight: 1 }}>
-                  <span style={{ background: "linear-gradient(180deg,#FFE08A 0%,#E8A33D 50%,#9A520C 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>WHO</span>
-                  <span style={{ color: "#3ECFBE", filter: "drop-shadow(0 0 10px #3DB8A8)" }}>?</span>
-                </div>
-              </div>
+              <WhosWhoLogo size={64} />
               <div className="text-sm opacity-55">{t.subtitle}</div>
             </div>
             {[1, 2].map((team) => (
@@ -698,7 +706,10 @@ function WhosWho() {
         {/* ── ROUND 3 ── */}
         {screen === "round3" && (
           <div className="flex-1 flex flex-col px-5 py-6 gap-4">
-            <div className="text-center text-xs font-bold opacity-50">{t.faceoffLabel} · {faceoffOrder.length ? faceoffPairIdx + 1 : 0} / {faceoffOrder.length}</div>
+            <div className="flex flex-col items-center gap-1">
+              <WhosWhoLogo size={36} />
+              <div className="text-xs font-bold opacity-50">{t.faceoffLabel} · {faceoffOrder.length ? faceoffPairIdx + 1 : 0} / {faceoffOrder.length}</div>
+            </div>
             {timerBar}
             {faceoffOrder.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">{t.needOneEach}</div>
