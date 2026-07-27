@@ -536,39 +536,39 @@ function WhosWho() {
               <WhosWhoLogo size={52} />
               <div style={{ opacity: 0.5, fontSize: 18 }}>{t.subtitle}</div>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "row", gap: 32, minHeight: 0 }}>
+            <div style={{ display: "flex", flexDirection: "row", gap: 32 }}>
               {[1, 2].map((team) => (
-                <div key={team} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
-                  <div className="tv-card" style={{ padding: "32px 40px", display: "flex", flexDirection: "column", gap: 24 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                      <span style={{fontSize:32}}>👥</span>
-                      <input value={teamNames[team]} onChange={(e) => setTeamNames((tn) => ({ ...tn, [team]: e.target.value }))}
-                        style={{ background: "transparent", fontWeight: 900, fontSize: 52, flex: 1, borderBottom: `3px solid ${TEAM_META[team].color}`, color: TEAM_META[team].color, paddingBottom: 4, minWidth: 0 }} />
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 24, opacity: 0.7 }}>{t.playersCount}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-                        <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.max(1, c[team] - 1) }))} style={{ width: 64, height: 64, borderRadius: "50%", background: "#12141F", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                        <span style={{ fontSize: 80, fontWeight: 900, width: 80, textAlign: "center", lineHeight: 1 }}>{counts[team]}</span>
-                        <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.min(12, c[team] + 1) }))} style={{ width: 64, height: 64, borderRadius: "50%", background: "#12141F", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                      </div>
-                    </div>
+                <div key={team} className="tv-card" style={{ flex: 1, padding: "32px 40px", display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <span style={{fontSize:32}}>👥</span>
+                    <input value={teamNames[team]} onChange={(e) => setTeamNames((tn) => ({ ...tn, [team]: e.target.value }))}
+                      style={{ background: "transparent", fontWeight: 900, fontSize: 52, flex: 1, borderBottom: `3px solid ${TEAM_META[team].color}`, color: TEAM_META[team].color, paddingBottom: 4, minWidth: 0 }} />
                   </div>
-                  <div className="tv-card" style={{ flex: 1, padding: "24px 40px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0, overflow: "auto" }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.45, marginBottom: 4 }}>{t.customizeQuestions}</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      {QUESTIONS.map((q, i) => (
-                        <input key={q.key} value={qLabels[lang][i]} onChange={(e) => { const n=[...qLabels[lang]]; n[i]=e.target.value; setQLabels((p)=>({...p,[lang]:n})); }}
-                          style={{ background: "#12141F", borderRadius: 12, padding: "12px 16px", fontSize: 16 }} />
-                      ))}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 24, opacity: 0.7 }}>{t.playersCount}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                      <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.max(1, c[team] - 1) }))} style={{ width: 64, height: 64, borderRadius: "50%", background: "#12141F", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <span style={{ fontSize: 80, fontWeight: 900, width: 80, textAlign: "center", lineHeight: 1 }}>{counts[team]}</span>
+                      <button onClick={() => setCounts((c) => ({ ...c, [team]: Math.min(12, c[team] + 1) }))} style={{ width: 64, height: 64, borderRadius: "50%", background: "#12141F", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                     </div>
-                    {OPEN_QUESTIONS.map((q, i) => (
-                      <input key={q.key} value={openQLabels[lang][i]} onChange={(e) => { const n=[...openQLabels[lang]]; n[i]=e.target.value; setOpenQLabels((p)=>({...p,[lang]:n})); }}
-                        style={{ background: "#12141F", borderRadius: 12, padding: "12px 16px", fontSize: 16 }} />
-                    ))}
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="tv-card" style={{ padding: "28px 40px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.45 }}>{t.customizeQuestions}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                {QUESTIONS.map((q, i) => (
+                  <input key={q.key} value={qLabels[lang][i]} onChange={(e) => { const n=[...qLabels[lang]]; n[i]=e.target.value; setQLabels((p)=>({...p,[lang]:n})); }}
+                    style={{ background: "#12141F", borderRadius: 12, padding: "14px 18px", fontSize: 22 }} />
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                {OPEN_QUESTIONS.map((q, i) => (
+                  <input key={q.key} value={openQLabels[lang][i]} onChange={(e) => { const n=[...openQLabels[lang]]; n[i]=e.target.value; setOpenQLabels((p)=>({...p,[lang]:n})); }}
+                    style={{ background: "#12141F", borderRadius: 12, padding: "14px 18px", fontSize: 22 }} />
+                ))}
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {players.length > 0 ? (
