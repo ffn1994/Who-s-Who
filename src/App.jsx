@@ -106,6 +106,9 @@ const STR = {
     organizerPhotosLabel: "صور الأغراض للجولة ٤",
     organizerDone: "خلصت — ابدأ تسجيل اللاعبين",
     passToOrganizer: "مرر الجوال إلى المنظم",
+    back: "رجوع",
+    continueReg: (done, total) => `كمّل التسجيل — ${done} / ${total} لاعب`,
+    startOver: "ابدأ من جديد",
   },
   en: {
     title: "Who's Who?",
@@ -169,6 +172,9 @@ const STR = {
     organizerPhotosLabel: "Object photos for Round 4",
     organizerDone: "Done — start player registration",
     passToOrganizer: "Pass the phone to the Organizer",
+    back: "Back",
+    continueReg: (done, total) => `Continue Sign-up — ${done} / ${total}`,
+    startOver: "Start Over",
   },
 };
 
@@ -333,6 +339,21 @@ function WhosWho() {
     setTimerRunning(false);
   }
 
+  function backFromOrganizer() { setScreen("counts"); }
+  function backFromPass() {
+    if (qIdx === 0) setScreen("organizer");
+    else setScreen("counts");
+  }
+  function backFromCollecting() {
+    setDraft(emptyPlayerDraft(queue[qIdx].team));
+    setScreen("pass");
+  }
+  function resetRegistration() {
+    setPlayers([]); setQueue([]); setQIdx(0);
+    setOrganizer({ photos: [] }); setDraft(null);
+  }
+  function continueRegistration() { setScreen("pass"); }
+
   const currentTeam = (screen === "pass" || screen === "collecting") ? queue[qIdx]?.team : null;
   const triviaOk = players.filter((p) => p.team === 1).length >= 3 && players.filter((p) => p.team === 2).length >= 3;
 
@@ -434,14 +455,29 @@ function WhosWho() {
                   className="rounded-xl px-3 py-2 text-sm" style={{ background: "#12141F" }} />
               ))}
             </div>
-            <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+            {players.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                <button onClick={continueRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
+                  {t.continueReg(players.length, queue.length)}
+                </button>
+                <button onClick={resetRegistration} className="w-full py-3 rounded-2xl font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+                  {t.startOver}
+                </button>
+              </div>
+            ) : (
+              <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+            )}
             <div className="text-center text-xs opacity-45 leading-relaxed">{t.privacyNote}</div>
           </div>
         )}
 
         {/* ── ORGANIZER ── */}
         {screen === "organizer" && (
-          <div className="flex-1 flex flex-col px-5 py-10 gap-6 justify-center">
+          <div className="flex-1 flex flex-col px-5 py-6 gap-6">
+            <button onClick={backFromOrganizer} className="self-start flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:13}}>{dir === "rtl" ? "▶" : "◀"}</span> {t.back}
+            </button>
+            <div className="flex-1 flex flex-col justify-center gap-6">
             <div className="text-center">
               <span style={{fontSize:40}}>🎮</span>
               <div className="text-3xl font-black mt-2" style={{ color: "#E8A33D" }}>{t.organizerTitle}</div>
@@ -467,23 +503,32 @@ function WhosWho() {
               </div>
             </div>
             <button onClick={finishOrganizer} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>{t.organizerDone}</button>
+            </div>
           </div>
         )}
 
         {/* ── PASS ── */}
         {screen === "pass" && (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
-            <span style={{fontSize:40}}>🔄</span>
-            <div className="text-sm opacity-60">{t.passTo}</div>
-            <div className="text-2xl font-black" style={{ color: TEAM_META[currentTeam].color }}>{t.playerFrom(teamNames[currentTeam])}</div>
-            <div className="text-xs opacity-40 max-w-xs leading-relaxed">{t.privacyTurn}</div>
-            <button onClick={beginCurrentEntry} className="mt-2 px-8 py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[currentTeam].bg, color: TEAM_META[currentTeam].color }}>{t.readyFill}</button>
+          <div className="flex-1 flex flex-col px-6 py-6 gap-6">
+            <button onClick={backFromPass} className="self-start flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:13}}>{dir === "rtl" ? "▶" : "◀"}</span> {t.back}
+            </button>
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
+              <span style={{fontSize:40}}>🔄</span>
+              <div className="text-sm opacity-60">{t.passTo}</div>
+              <div className="text-2xl font-black" style={{ color: TEAM_META[currentTeam].color }}>{t.playerFrom(teamNames[currentTeam])}</div>
+              <div className="text-xs opacity-40 max-w-xs leading-relaxed">{t.privacyTurn}</div>
+              <button onClick={beginCurrentEntry} className="mt-2 px-8 py-3 rounded-xl font-bold active:scale-95" style={{ background: TEAM_META[currentTeam].bg, color: TEAM_META[currentTeam].color }}>{t.readyFill}</button>
+            </div>
           </div>
         )}
 
         {/* ── COLLECTING ── */}
         {screen === "collecting" && draft && (
           <div className="flex-1 flex flex-col px-5 py-6 gap-4">
+            <button onClick={backFromCollecting} className="self-start flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:13}}>{dir === "rtl" ? "▶" : "◀"}</span> {t.back}
+            </button>
             <div className="text-center text-xs font-bold opacity-50 mb-1" style={{ color: TEAM_META[currentTeam].color }}>
               {teamNames[currentTeam]} · {queue[qIdx].order + 1} / {counts[currentTeam]}
             </div>
@@ -712,18 +757,23 @@ function WhosWho() {
 
         {/* ── FINAL ── */}
         {screen === "final" && (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-6 text-center">
-            <span style={{fontSize:48}}>🏆</span>
-            <div className="text-3xl font-black">
-              {scores[1] === scores[2] ? t.tie : scores[1] > scores[2] ? t.wins(teamNames[1]) : t.wins(teamNames[2])}
-            </div>
-            <div className="flex gap-6 text-xl font-bold">
-              <div style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</div>
-              <div style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</div>
-            </div>
-            <button onClick={resetGame} className="mt-4 flex items-center gap-2 px-6 py-3 rounded-xl font-bold active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
-              <span style={{fontSize:18}}>↺</span> {t.newGame}
+          <div className="flex-1 flex flex-col px-6 py-6 gap-6">
+            <button onClick={() => setScreen("rounds")} className="self-start flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:13}}>{dir === "rtl" ? "▶" : "◀"}</span> {t.back}
             </button>
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center">
+              <span style={{fontSize:48}}>🏆</span>
+              <div className="text-3xl font-black">
+                {scores[1] === scores[2] ? t.tie : scores[1] > scores[2] ? t.wins(teamNames[1]) : t.wins(teamNames[2])}
+              </div>
+              <div className="flex gap-6 text-xl font-bold">
+                <div style={{ color: TEAM_META[1].color }}>{teamNames[1]}: {scores[1]}</div>
+                <div style={{ color: TEAM_META[2].color }}>{teamNames[2]}: {scores[2]}</div>
+              </div>
+              <button onClick={resetGame} className="mt-4 flex items-center gap-2 px-6 py-3 rounded-xl font-bold active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>
+                <span style={{fontSize:18}}>↺</span> {t.newGame}
+              </button>
+            </div>
           </div>
         )}
 
