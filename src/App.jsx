@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 
 const QUESTIONS = [
@@ -195,6 +195,35 @@ function shuffle(arr) {
   return a;
 }
 
+// Shuffle avoiding back-to-back same person or same attribute type
+function smartShuffle(items) {
+  if (items.length <= 1) return [...items];
+  const arr = shuffle(items);
+  for (let i = 1; i < arr.length; i++) {
+    const p = arr[i - 1];
+    if (arr[i].player.id === p.player.id || arr[i].attrKey === p.attrKey) {
+      for (let j = i + 1; j < arr.length; j++) {
+        if (arr[j].player.id !== p.player.id && arr[j].attrKey !== p.attrKey) {
+          [arr[i], arr[j]] = [arr[j], arr[i]]; break;
+        }
+      }
+    }
+  }
+  return arr;
+}
+
+// Pre-build faceoff question sequence: 5 per team, no repeats, specials once each per team
+const SPECIAL_Q_INDICES = [7, 8];
+function buildFaceoffSequence() {
+  const regular = FACEOFF_QUESTIONS.map((_, i) => i).filter(i => !SPECIAL_Q_INDICES.includes(i));
+  const reg = shuffle(regular);
+  const t1Qs = shuffle([...SPECIAL_Q_INDICES, ...reg.slice(0, 3)]);
+  const t2Qs = shuffle([...SPECIAL_Q_INDICES, ...reg.slice(3, 6)]);
+  const seq = [];
+  for (let i = 0; i < 5; i++) { seq.push(t1Qs[i]); seq.push(t2Qs[i]); }
+  return seq; // 10 items interleaved: t1turn, t2turn, ...
+}
+
 function WhosWhoLogo({ size = 64, mini = false }) {
   const fs = mini ? size * 0.6 : size;
   const divW = mini ? fs * 2 : fs * 2.5;
@@ -266,31 +295,72 @@ function WhosWho() {
   const [faceoffPairIdx, setFaceoffPairIdx] = useState(0);
   const [faceoffLiveQIdx, setFaceoffLiveQIdx] = useState(0);
   const [faceoffShufflesLeft, setFaceoffShufflesLeft] = useState(3);
+  const [faceoffQSequence, setFaceoffQSequence] = useState([]);
+  const [faceoffUsedQSet, setFaceoffUsedQSet] = useState([]);
+
+  const [r1UsedCombos, setR1UsedCombos] = useState([]);
 
   const [organizer, setOrganizer] = useState({ photos: [] });
-  const [timerSeconds, setTimerSeconds] = useState(TIMER_DEFAULT);
+  const [timerElapsed, setTimerElapsed] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
 
-  // Timer: tick every second when running
+  // Timer: count UP every second when running
   useEffect(() => {
     if (!timerRunning) return;
-    if (timerSeconds <= 0) { setTimerRunning(false); return; }
-    const id = setTimeout(() => setTimerSeconds((s) => Math.max(0, s - 1)), 1000);
+    const id = setTimeout(() => setTimerElapsed((s) => s + 1), 1000);
     return () => clearTimeout(id);
-  }, [timerRunning, timerSeconds]);
+  }, [timerRunning, timerElapsed]);
 
-  // Auto-start timer when entering a round screen or advancing a card
+  // Auto-reset timer when entering a round or advancing a card
   useEffect(() => {
     if (["round1", "round2", "round3", "round4"].includes(screen)) {
-      setTimerSeconds(screen === "round3" ? FACEOFF_TIMER : TIMER_DEFAULT);
+      setTimerElapsed(0);
       setTimerRunning(true);
     } else {
       setTimerRunning(false);
     }
   }, [screen, deckIdx, faceoffPairIdx]);
 
-  const timerMax = screen === "round3" ? FACEOFF_TIMER : TIMER_DEFAULT;
-  function resetTimer() { setTimerSeconds(timerMax); setTimerRunning(true); }
+  function resetTimer() { setTimerElapsed(0); setTimerRunning(true); }
+
+  // ── BroadcastChannel sync (DeX / multi-window) ───────────────────
+  const myBCId = useRef(uid());
+  const bcRef = useRef(null);
+  const stateRef = useRef({});
+  const bcReceiving = useRef(false);
+
+  stateRef.current = { screen, teamNames, qLabels, openQLabels, counts, queue, qIdx, players, draft, scores, deck, deckIdx, revealed, faceoffOrder, faceoffPairIdx, faceoffLiveQIdx, faceoffShufflesLeft, faceoffQSequence, faceoffUsedQSet, r1UsedCombos, organizer, timerElapsed, timerRunning, lang };
+
+  useEffect(() => {
+    if (!("BroadcastChannel" in window)) return;
+    const bc = new BroadcastChannel("who-s-who-v1");
+    bcRef.current = bc;
+    bc.onmessage = ({ data }) => {
+      if (!data || data.from === myBCId.current) return;
+      if (data.type === "sync") {
+        bcReceiving.current = true;
+        const s = data.state;
+        setScreen(s.screen); setTeamNames(s.teamNames); setQLabels(s.qLabels); setOpenQLabels(s.openQLabels);
+        setCounts(s.counts); setQueue(s.queue); setQIdx(s.qIdx); setPlayers(s.players); setDraft(s.draft);
+        setScores(s.scores); setDeck(s.deck); setDeckIdx(s.deckIdx); setRevealed(s.revealed);
+        setFaceoffOrder(s.faceoffOrder); setFaceoffPairIdx(s.faceoffPairIdx); setFaceoffLiveQIdx(s.faceoffLiveQIdx);
+        setFaceoffShufflesLeft(s.faceoffShufflesLeft); setFaceoffQSequence(s.faceoffQSequence || []);
+        setFaceoffUsedQSet(s.faceoffUsedQSet || []); setR1UsedCombos(s.r1UsedCombos || []);
+        setOrganizer(s.organizer); setTimerElapsed(s.timerElapsed ?? 0); setTimerRunning(s.timerRunning);
+        setLang(s.lang);
+        setTimeout(() => { bcReceiving.current = false; }, 50);
+      } else if (data.type === "request") {
+        bc.postMessage({ from: myBCId.current, type: "sync", state: stateRef.current });
+      }
+    };
+    bc.postMessage({ from: myBCId.current, type: "request" });
+    return () => bc.close();
+  }, []);
+
+  useEffect(() => {
+    if (bcReceiving.current) return;
+    bcRef.current?.postMessage({ from: myBCId.current, type: "sync", state: stateRef.current });
+  }, [screen, teamNames, qLabels, openQLabels, counts, queue, qIdx, players, draft, scores, deck, deckIdx, revealed, faceoffOrder, faceoffPairIdx, faceoffLiveQIdx, faceoffShufflesLeft, faceoffQSequence, faceoffUsedQSet, r1UsedCombos, organizer, timerElapsed, timerRunning, lang]);
 
   // ── Registration flow ────────────────────────────────────────────
   function startRegistration() { setScreen("organizer"); }
@@ -331,44 +401,91 @@ function WhosWho() {
   function removeOrganizerPhoto(id) { setOrganizer((o) => ({ ...o, photos: o.photos.filter((p) => p.id !== id) })); }
 
   // ── Deck builders ────────────────────────────────────────────────
-  function buildDeck() {
-    const items = [];
+  function buildDeck(excludeCombos = new Set()) {
+    const byTeam = { 1: [], 2: [] };
     players.forEach((p) => {
       QUESTIONS.forEach((q, idx) => {
-        if (p[q.key]?.trim()) items.push({ player: p, attrLabel: qLabels[lang][idx], value: p[q.key], askedTeam: p.team === 1 ? 2 : 1 });
+        const key = `${p.id}:${q.key}`;
+        if (p[q.key]?.trim() && !excludeCombos.has(key)) {
+          const askedTeam = p.team === 1 ? 2 : 1;
+          byTeam[askedTeam].push({ player: p, attrKey: q.key, attrLabel: qLabels[lang][idx], value: p[q.key], askedTeam });
+        }
       });
     });
-    return shuffle(items);
+    function limitItems(askedTeam) {
+      const srcTeamSize = players.filter(p => p.team === (askedTeam === 1 ? 2 : 1)).length;
+      const items = byTeam[askedTeam];
+      if (srcTeamSize >= 3) {
+        const target = Math.max(9, Math.min(15, Math.floor(items.length * 0.5)));
+        return shuffle(items).slice(0, Math.min(target, items.length));
+      }
+      return [...items];
+    }
+    const t1 = smartShuffle(limitItems(1));
+    const t2 = smartShuffle(limitItems(2));
+    const result = [];
+    let i = 0, j = 0;
+    while (i < t1.length || j < t2.length) {
+      if (i < t1.length) result.push(t1[i++]);
+      if (j < t2.length) result.push(t2[j++]);
+    }
+    return result;
+  }
+  function countDeck(excludeCombos = new Set()) {
+    const byTeam = { 1: 0, 2: 0 };
+    players.forEach((p) => {
+      QUESTIONS.forEach((q) => {
+        const key = `${p.id}:${q.key}`;
+        if (p[q.key]?.trim() && !excludeCombos.has(key)) byTeam[p.team === 1 ? 2 : 1]++;
+      });
+    });
+    function limitCount(askedTeam, count) {
+      const srcSize = players.filter(p => p.team === (askedTeam === 1 ? 2 : 1)).length;
+      if (srcSize >= 3) return Math.min(count, Math.max(9, Math.min(15, Math.floor(count * 0.5))));
+      return count;
+    }
+    return limitCount(1, byTeam[1]) + limitCount(2, byTeam[2]);
   }
   function buildPhotoDeck() { return shuffle(organizer.photos.map((ph) => ({ src: ph.src }))); }
 
   // ── Round starters ───────────────────────────────────────────────
-  function startRound1() { setDeck(buildDeck()); setDeckIdx(0); setRevealed(false); setScreen("round1"); }
-  function startRound2() { setDeck(buildDeck()); setDeckIdx(0); setRevealed(false); setScreen("round2"); }
+  function startRound1() {
+    const d = buildDeck();
+    const combos = d.map(item => `${item.player.id}:${item.attrKey}`);
+    setR1UsedCombos(combos);
+    setDeck(d); setDeckIdx(0); setRevealed(false); setScreen("round1");
+  }
+  function startRound2() {
+    setDeck(buildDeck(new Set(r1UsedCombos)));
+    setDeckIdx(0); setRevealed(false); setScreen("round2");
+  }
   function startRound4() { setDeck(buildPhotoDeck()); setDeckIdx(0); setScreen("round4"); }
   function startRound3() {
-    const pick3 = (arr) => { const s = shuffle(arr); return [0,1,2].map((i) => s[i % s.length]); };
+    const pick5 = (arr) => { const s = shuffle(arr); return [0,1,2,3,4].map((i) => s[i % s.length]); };
     const t1 = players.filter((p) => p.team === 1);
     const t2 = players.filter((p) => p.team === 2);
-    if (!t1.length || !t2.length) { setFaceoffOrder([]); setFaceoffPairIdx(0); setScreen("round3"); return; }
-    const p1 = pick3(t1), p2 = pick3(t2);
+    if (!t1.length || !t2.length) { setFaceoffOrder([]); setFaceoffPairIdx(0); setFaceoffQSequence([]); setFaceoffUsedQSet([]); setScreen("round3"); return; }
+    const p1 = pick5(t1), p2 = pick5(t2);
     const order = [];
-    for (let i = 0; i < 3; i++) { order.push(p1[i]); order.push(p2[i]); }
+    for (let i = 0; i < 5; i++) { order.push(p1[i]); order.push(p2[i]); }
+    const seq = buildFaceoffSequence();
     setFaceoffOrder(order);
+    setFaceoffQSequence(seq);
     setFaceoffPairIdx(0);
-    setFaceoffLiveQIdx(Math.floor(Math.random() * FACEOFF_QUESTIONS.length));
+    setFaceoffLiveQIdx(seq[0]);
+    setFaceoffUsedQSet([seq[0]]);
     setFaceoffShufflesLeft(3);
     setScreen("round3");
   }
 
-  function nextFaceoffQ() {
+  function nextFaceoffQ(currentUsed) {
+    const usedSet = new Set(currentUsed);
+    const candidates = FACEOFF_QUESTIONS.map((_, i) => i).filter(i => !usedSet.has(i));
+    if (!candidates.length) return;
+    const newQ = candidates[Math.floor(Math.random() * candidates.length)];
+    setFaceoffLiveQIdx(newQ);
+    setFaceoffUsedQSet(prev => [...new Set([...prev, newQ])]);
     setFaceoffShufflesLeft((n) => n - 1);
-    setFaceoffLiveQIdx((idx) => { let n = Math.floor(Math.random() * FACEOFF_QUESTIONS.length); if (n === idx) n = (idx + 1) % FACEOFF_QUESTIONS.length; return n; });
-  }
-  function randomFaceoffQ(currentIdx) {
-    let n = Math.floor(Math.random() * FACEOFF_QUESTIONS.length);
-    if (n === currentIdx) n = (currentIdx + 1) % FACEOFF_QUESTIONS.length;
-    return n;
   }
 
   function award(points) { setScores((prev) => ({ 1: prev[1] + (points[1] || 0), 2: prev[2] + (points[2] || 0) })); }
@@ -383,9 +500,10 @@ function WhosWho() {
     setPlayers([]); setQueue([]); setQIdx(0);
     setScores({ 1: 0, 2: 0 });
     setDeck([]); setDeckIdx(0);
-    setFaceoffOrder([]); setFaceoffPairIdx(0);
+    setFaceoffOrder([]); setFaceoffPairIdx(0); setFaceoffQSequence([]); setFaceoffUsedQSet([]);
+    setR1UsedCombos([]);
     setOrganizer({ photos: [] });
-    setTimerRunning(false);
+    setTimerRunning(false); setTimerElapsed(0);
   }
 
   function backFromOrganizer() { setScreen("counts"); }
@@ -406,17 +524,17 @@ function WhosWho() {
   const currentTeam = (screen === "pass" || screen === "collecting") ? queue[qIdx]?.team : null;
   const triviaOk = players.filter((p) => p.team === 1).length >= 3 && players.filter((p) => p.team === 2).length >= 3;
 
-  const timerColor = timerSeconds <= 5 ? "#E85D5D" : timerSeconds <= 10 ? "#E8A33D" : "#3DB8A8";
+  const timerColor = timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8";
   const timerBar = (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "#1C1F30" }}>
         <div className="h-full rounded-full" style={{
-          width: `${(timerSeconds / timerMax) * 100}%`,
+          width: `${Math.min(100, (timerElapsed / 90) * 100)}%`,
           background: timerColor,
           transition: "width 0.95s linear, background 0.3s"
         }} />
       </div>
-      <span className="font-black text-sm w-6 text-center" style={{ color: timerColor }}>{timerSeconds}</span>
+      <span className="font-black text-sm w-8 text-center" style={{ color: timerColor }}>{timerElapsed}s</span>
       <button onClick={() => setTimerRunning((r) => !r)} className="w-7 h-7 rounded-full flex items-center justify-center text-xs active:scale-95" style={{ background: "#1C1F30" }}>
         {timerRunning ? "⏸" : "▶"}
       </button>
@@ -676,17 +794,27 @@ function WhosWho() {
               <div style={{ fontSize: 20, opacity: 0.5 }}>{t.passAnyone}</div>
             </div>
             <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 24, minHeight: 0 }}>
-              {[
-                { label: t.round1Title, name: t.round1Name, color: "#E8A33D", action: startRound1, enabled: true, desc: t.round1Desc },
-                { label: t.round2Title, name: t.round2Name, color: "#3DB8A8", action: startRound2, enabled: triviaOk, desc: triviaOk ? t.round2Desc : t.triviaLocked },
-                { label: t.round3Title, name: t.round3Name, color: "#E85D5D", action: startRound3, enabled: true, desc: t.round3Desc },
-                { label: t.round4Title, name: t.round4Name, color: "#9B8CE8", action: startRound4, enabled: true, desc: t.round4Desc },
-              ].map((r, i) => (
+              {(() => {
+                const r1Count = countDeck();
+                const r2Count = countDeck(new Set(r1UsedCombos));
+                return [
+                  { label: t.round1Title, name: t.round1Name, color: "#E8A33D", action: startRound1, enabled: true, desc: t.round1Desc, count: r1Count },
+                  { label: t.round2Title, name: t.round2Name, color: "#3DB8A8", action: startRound2, enabled: triviaOk, desc: triviaOk ? t.round2Desc : t.triviaLocked, count: triviaOk ? r2Count : null },
+                  { label: t.round3Title, name: t.round3Name, color: "#E85D5D", action: startRound3, enabled: true, desc: t.round3Desc, count: null },
+                  { label: t.round4Title, name: t.round4Name, color: "#9B8CE8", action: startRound4, enabled: true, desc: t.round4Desc, count: null },
+                ];
+              })().map((r, i) => (
                 <button key={i} onClick={r.enabled ? r.action : undefined}
                   className="tv-card" style={{ padding: "40px 56px", textAlign: "start", opacity: r.enabled ? 1 : 0.35, cursor: r.enabled ? "pointer" : "default", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
                   <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.5 }}>{r.label}</div>
                   <div style={{ fontSize: 48, fontWeight: 900, color: r.color }}>{r.name}</div>
                   <div style={{ fontSize: 22, opacity: 0.6 }}>{r.desc}</div>
+                  {r.count !== null && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 4, background: "#12141F", borderRadius: 10, padding: "6px 16px", alignSelf: "flex-start" }}>
+                      <span style={{ fontSize: 26, fontWeight: 900, color: r.color }}>{r.count}</span>
+                      <span style={{ fontSize: 16, opacity: 0.6 }}>{lang === "ar" ? "سؤال" : "questions"}</span>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -708,12 +836,20 @@ function WhosWho() {
               <div className="text-xs font-bold opacity-50 mb-1">{t.round1Title}</div>
               <div className="text-xl font-black" style={{ color: "#E8A33D" }}>{t.round1Name}</div>
               <div className="text-xs opacity-60 mt-1">{t.round1Desc}</div>
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1" style={{ background: "#12141F" }}>
+                <span className="text-base font-black" style={{ color: "#E8A33D" }}>{countDeck()}</span>
+                <span className="text-xs opacity-55">{lang === "ar" ? "سؤال" : "questions"}</span>
+              </div>
             </button>
             {triviaOk ? (
               <button onClick={startRound2} className="rounded-2xl p-5 text-start card-shadow active:scale-95" style={{ background: "#181B2A" }}>
                 <div className="text-xs font-bold opacity-50 mb-1">{t.round2Title}</div>
                 <div className="text-xl font-black" style={{ color: "#3DB8A8" }}>{t.round2Name}</div>
                 <div className="text-xs opacity-60 mt-1">{t.round2Desc}</div>
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1" style={{ background: "#12141F" }}>
+                  <span className="text-base font-black" style={{ color: "#3DB8A8" }}>{countDeck(new Set(r1UsedCombos))}</span>
+                  <span className="text-xs opacity-55">{lang === "ar" ? "سؤال" : "questions"}</span>
+                </div>
               </button>
             ) : (
               <div className="rounded-2xl p-5 card-shadow" style={{ background: "#181B2A", opacity: 0.35 }}>
@@ -758,8 +894,15 @@ function WhosWho() {
               </div>
               {/* timer */}
               <div style={{ height: 6, background: "#1C1F30" }}>
-                <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
+                <div style={{ height: "100%", background: timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8", width: `${Math.min(100, (timerElapsed / 90) * 100)}%`, transition: "width 0.95s linear, background 0.3s" }} />
               </div>
+              {/* start-of-round count banner */}
+              {deckIdx === 0 && deck.length > 0 && (
+                <div style={{ textAlign: "center", padding: "10px 0", background: "#181B2A", borderBottom: "1px solid #1C1F30", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+                  <span style={{ fontSize: 32, fontWeight: 900, color: isR1 ? "#E8A33D" : "#3DB8A8" }}>{deck.length}</span>
+                  <span style={{ fontSize: 20, opacity: 0.5 }}>{lang === "ar" ? "سؤال في هذه الجولة" : "questions this round"}</span>
+                </div>
+              )}
               {/* body */}
               <div className="tv-body" style={{ padding: "28px 48px", gap: 28, alignItems: "stretch" }}>
                 {/* left: team banner + timer controls */}
@@ -771,7 +914,7 @@ function WhosWho() {
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
-                    <span style={{ fontSize: 48, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
+                    <span style={{ fontSize: 48, fontWeight: 900, color: timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8" }}>{timerElapsed}s</span>
                     <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>{timerRunning ? "⏸" : "▶"}</button>
                     <button onClick={resetTimer} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
                   </div>
@@ -834,6 +977,12 @@ function WhosWho() {
             <div className="text-center text-xs font-bold opacity-50">
               {screen === "round1" ? t.guessingLabel : t.triviaLabel} · {deck.length ? deckIdx + 1 : 0} / {deck.length}
             </div>
+            {deckIdx === 0 && deck.length > 0 && (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-xl" style={{ background: "#181B2A" }}>
+                <span className="text-2xl font-black" style={{ color: screen === "round1" ? "#E8A33D" : "#3DB8A8" }}>{deck.length}</span>
+                <span className="text-sm opacity-60">{lang === "ar" ? "سؤال في هذه الجولة" : "questions this round"}</span>
+              </div>
+            )}
             {timerBar}
             {deck.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-center opacity-60 text-sm px-6">{t.noQuestions}</div>
@@ -901,7 +1050,7 @@ function WhosWho() {
               </div>
             </div>
             <div style={{ height: 6, background: "#1C1F30" }}>
-              <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
+              <div style={{ height: "100%", background: timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8", width: `${Math.min(100, (timerElapsed / 90) * 100)}%`, transition: "width 0.95s linear, background 0.3s" }} />
             </div>
             <div className="tv-body" style={{ padding: "28px 56px", gap: 40, alignItems: "stretch" }}>
               {deck.length === 0 ? (
@@ -919,7 +1068,7 @@ function WhosWho() {
                   </div>
                   <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 20, justifyContent: "center" }}>
                     <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ fontSize: 48, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
+                      <span style={{ fontSize: 48, fontWeight: 900, color: timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8" }}>{timerElapsed}s</span>
                       <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>{timerRunning ? "⏸" : "▶"}</button>
                       <button onClick={resetTimer} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>↺</button>
                     </div>
@@ -967,10 +1116,12 @@ function WhosWho() {
           const opp = storyteller.team === 1 ? 2 : 1;
           function advanceFaceoff() {
             const ni = faceoffPairIdx + 1;
-            setFaceoffLiveQIdx((idx) => randomFaceoffQ(idx));
+            if (ni >= faceoffOrder.length) { setScreen("rounds"); return; }
+            const nextQ = faceoffQSequence[ni] ?? 0;
+            setFaceoffPairIdx(ni);
+            setFaceoffLiveQIdx(nextQ);
+            setFaceoffUsedQSet(prev => [...new Set([...prev, nextQ])]);
             setFaceoffShufflesLeft(3);
-            if (ni >= faceoffOrder.length) setScreen("rounds");
-            else setFaceoffPairIdx(ni);
           }
           return (
             <div className="tv-screen">
@@ -983,7 +1134,7 @@ function WhosWho() {
                 </div>
               </div>
               <div style={{ height: 6, background: "#1C1F30" }}>
-                <div style={{ height: "100%", background: timerSeconds < 10 ? "#E85D5D" : "#E8A33D", width: `${(timerSeconds / timerMax) * 100}%`, transition: "width 0.95s linear, background 0.3s" }} />
+                <div style={{ height: "100%", background: timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8", width: `${Math.min(100, (timerElapsed / 90) * 100)}%`, transition: "width 0.95s linear, background 0.3s" }} />
               </div>
               <div className="tv-body" style={{ padding: "28px 48px", gap: 28, alignItems: "stretch" }}>
                 {/* left: storyteller */}
@@ -993,7 +1144,7 @@ function WhosWho() {
                     <div style={{ fontSize: 52, fontWeight: 900, color: TEAM_META[storyteller.team].color }}>{storyteller.name}</div>
                   </div>
                   <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
-                    <span style={{ fontSize: 48, fontWeight: 900, color: timerSeconds < 10 ? "#E85D5D" : "#E8A33D" }}>{timerSeconds}s</span>
+                    <span style={{ fontSize: 48, fontWeight: 900, color: timerElapsed >= 60 ? "#E85D5D" : timerElapsed >= 30 ? "#E8A33D" : "#3DB8A8" }}>{timerElapsed}s</span>
                     <button onClick={() => setTimerRunning((r) => !r)} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 20 }}>{timerRunning ? "⏸" : "▶"}</button>
                     <button onClick={resetTimer} style={{ width: 48, height: 48, borderRadius: "50%", background: "#1C1F30", fontSize: 22 }}>↺</button>
                   </div>
@@ -1004,9 +1155,9 @@ function WhosWho() {
                     <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.4, marginBottom: 20 }}>{t.faceoffLabel}</div>
                     <div style={{ fontSize: 58, fontWeight: 900, lineHeight: 1.4 }}>{FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}</div>
                   </div>
-                  {faceoffShufflesLeft > 0 && (
+                  {faceoffShufflesLeft > 0 && faceoffUsedQSet.length < FACEOFF_QUESTIONS.length && (
                     <div style={{ display: "flex", justifyContent: "center" }}>
-                      <button onClick={nextFaceoffQ} style={{ padding: "14px 28px", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", gap: 10 }}>
+                      <button onClick={() => nextFaceoffQ(faceoffUsedQSet)} style={{ padding: "14px 28px", borderRadius: 14, fontWeight: 700, fontSize: 18, background: "#1C1F30", display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{fontSize:20}}>🔀</span> {t.newQuestion}
                         <span style={{ borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, background: "#E8A33D", color: "#12141F" }}>{faceoffShufflesLeft}</span>
                       </button>
@@ -1028,7 +1179,7 @@ function WhosWho() {
                     {t.win(teamNames[opp])}
                   </button>
                   {faceoffPairIdx + 1 < faceoffOrder.length ? (
-                    <button onClick={() => { setFaceoffShufflesLeft(3); setFaceoffLiveQIdx((idx) => randomFaceoffQ(idx)); setFaceoffPairIdx((i) => i + 1); }}
+                    <button onClick={advanceFaceoff}
                       style={{ padding: "18px", borderRadius: 14, fontWeight: 700, fontSize: 20, background: "#1C1F30" }}>{t.skipNoPoints}</button>
                   ) : (
                     <button onClick={() => setScreen("rounds")} style={{ padding: "18px", borderRadius: 14, fontWeight: 700, fontSize: 20, background: "#1C1F30" }}>{t.endRound}</button>
@@ -1059,10 +1210,12 @@ function WhosWho() {
               const opp = storyteller.team === 1 ? 2 : 1;
               function advanceFaceoff() {
                 const ni = faceoffPairIdx + 1;
-                setFaceoffLiveQIdx((idx) => randomFaceoffQ(idx));
+                if (ni >= faceoffOrder.length) { setScreen("rounds"); return; }
+                const nextQ = faceoffQSequence[ni] ?? 0;
+                setFaceoffPairIdx(ni);
+                setFaceoffLiveQIdx(nextQ);
+                setFaceoffUsedQSet(prev => [...new Set([...prev, nextQ])]);
                 setFaceoffShufflesLeft(3);
-                if (ni >= faceoffOrder.length) setScreen("rounds");
-                else setFaceoffPairIdx(ni);
               }
               return (
                 <>
@@ -1082,8 +1235,8 @@ function WhosWho() {
                         {FACEOFF_QUESTIONS[faceoffLiveQIdx][lang]}
                       </div>
                     </div>
-                    {faceoffShufflesLeft > 0 && (
-                      <button onClick={nextFaceoffQ} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
+                    {faceoffShufflesLeft > 0 && faceoffUsedQSet.length < FACEOFF_QUESTIONS.length && (
+                      <button onClick={() => nextFaceoffQ(faceoffUsedQSet)} className="px-6 py-2.5 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2" style={{ background: "#1C1F30" }}>
                         <span style={{fontSize:16}}>🔀</span> {t.newQuestion}
                         <span className="rounded-full w-5 h-5 flex items-center justify-center text-xs font-black" style={{ background: "#E8A33D", color: "#12141F" }}>{faceoffShufflesLeft}</span>
                       </button>
@@ -1104,11 +1257,7 @@ function WhosWho() {
                     </button>
                   </div>
                   {faceoffPairIdx + 1 < faceoffOrder.length ? (
-                    <button onClick={() => {
-                      setFaceoffShufflesLeft(3);
-                      setFaceoffLiveQIdx((idx) => randomFaceoffQ(idx));
-                      setFaceoffPairIdx((i) => i + 1);
-                    }} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
+                    <button onClick={advanceFaceoff} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.skipNoPoints}</button>
                   ) : (
                     <button onClick={() => setScreen("rounds")} className="py-2.5 rounded-xl font-bold text-sm active:scale-95" style={{ background: "#1C1F30" }}>{t.endRound}</button>
                   )}
