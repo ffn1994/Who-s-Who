@@ -16,7 +16,8 @@ const QUESTIONS = [
 ];
 const OPEN_QUESTIONS = [
   { key: "wish", ar: "لو تقدر تسوي شي وحد بس طول عمرك، شنو بيكون؟", en: "If you could only ever do one thing for the rest of your life, what would it be?" },
-  { key: "funny", ar: "شنو أكثر موقف محرج أو مضحك صار لك؟", en: "What's the most embarrassing or funny thing that's happened to you?" },
+  { key: "funny", ar: "شنو أغرب شي أكلته في حياتك؟", en: "What's the strangest thing you've ever eaten?" },
+  { key: "fear", ar: "شنو أكثر شي تخاف منه؟", en: "What are you most afraid of?" },
 ];
 const MAX_ORG_PHOTOS = 15;
 const TIMER_DEFAULT = 30;
@@ -221,7 +222,7 @@ const defaultOpenQLabels = (l) => OPEN_QUESTIONS.map((q) => q[l]);
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function emptyPlayerDraft(team) {
-  return { id: uid(), team, name: "", job: "", color: "", food: "", style: "", wish: "", funny: "" };
+  return { id: uid(), team, name: "", job: "", color: "", food: "", style: "", wish: "", funny: "", fear: "" };
 }
 function shuffle(arr) {
   const a = [...arr];
@@ -348,7 +349,7 @@ function WhosWho() {
   const [joinScreen, setJoinScreen] = useState("pick-team");
   const [joinSelectedTeam, setJoinSelectedTeam] = useState(null);
   const [joinSelectedSlot, setJoinSelectedSlot] = useState(null);
-  const [joinForm, setJoinForm] = useState({ name: "", job: "", color: "", food: "", style: "", wish: "", funny: "" });
+  const [joinForm, setJoinForm] = useState({ name: "", job: "", color: "", food: "", style: "", wish: "", funny: "", fear: "" });
   const [joinSubmitting, setJoinSubmitting] = useState(false);
   const [qrSessionId, setQrSessionId] = useState(null);
   const [qrImgUrl, setQrImgUrl] = useState(null);
@@ -460,7 +461,7 @@ function WhosWho() {
   function startGameFromQR() {
     const gamePlayers = qrLivePlayers
       .filter(p => p.name?.trim())
-      .map(p => ({ id: p.id, team: p.team, name: p.name, job: p.job || "", color: p.color || "", food: p.food || "", style: p.style || "", wish: p.wish || "", funny: p.funny || "" }));
+      .map(p => ({ id: p.id, team: p.team, name: p.name, job: p.job || "", color: p.color || "", food: p.food || "", style: p.style || "", wish: p.wish || "", funny: p.funny || "", fear: p.fear || "" }));
     setPlayers(gamePlayers);
     setScreen("rounds");
   }
@@ -471,7 +472,7 @@ function WhosWho() {
     await supabase.from("ww_players").update({
       name: joinForm.name, job: joinForm.job, color: joinForm.color,
       food: joinForm.food, style: joinForm.style, wish: joinForm.wish,
-      funny: joinForm.funny, submitted_at: new Date().toISOString()
+      funny: joinForm.funny, fear: joinForm.fear, submitted_at: new Date().toISOString()
     }).eq("id", joinSelectedSlot.id);
     setJoinSubmitting(false);
     setJoinScreen("done");
