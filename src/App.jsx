@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { createClient } from "@supabase/supabase-js";
+import QRCode from "qrcode";
+
+const supabase = createClient(
+  "https://inqtttbxzjqvsjwnlmkf.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlucXR0dGJ4empxdnNqd25sbWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NDAxNDUsImV4cCI6MjA5NzAxNjE0NX0.XcfVa0jYVyEMzomXBRKxOodKdjIQK0Y7vwmmO7WTXR4"
+);
 
 const QUESTIONS = [
   { key: "job", ar: "المهنة أو الوظيفة", en: "Job or profession" },
@@ -110,6 +117,21 @@ const STR = {
     back: "رجوع",
     continueReg: (done, total) => `كمّل التسجيل — ${done} / ${total} لاعب`,
     startOver: "ابدأ من جديد",
+    qrRegister: "تسجيل بـ QR 📱",
+    qrWaiting: "انتظار اللاعبين",
+    qrScanInstruct: "كل لاعب يسكن الـ QR بتلفونه ويسجل بياناته بخصوصية",
+    qrSlotEmpty: "فارغ",
+    qrSlotTaken: "✅ سجّل",
+    qrAllDone: "جميع اللاعبين سجلوا!",
+    startGameNow: "ابدأ اللعبة",
+    qrJoinTitle: "سجّل بياناتك",
+    qrJoinPrivate: "بياناتك خاصة — ما يشوفها أحد غيرك",
+    qrPickTeam: "من أي فريق أنت؟",
+    qrPickSlot: "اختر رقمك في الفريق",
+    qrSent: "تم الإرسال! ✅",
+    qrSentDesc: "بياناتك وصلت للمنظم — استنى اللعبة تبدأ",
+    qrSlotLoading: "جاري التحميل...",
+    qrSessionNotFound: "رابط التسجيل غير صالح",
   },
   en: {
     title: "Who's Who?",
@@ -176,6 +198,21 @@ const STR = {
     back: "Back",
     continueReg: (done, total) => `Continue Sign-up — ${done} / ${total}`,
     startOver: "Start Over",
+    qrRegister: "Register via QR 📱",
+    qrWaiting: "Waiting for Players",
+    qrScanInstruct: "Each player scans the QR with their phone and fills in their info privately",
+    qrSlotEmpty: "Empty",
+    qrSlotTaken: "✅ Registered",
+    qrAllDone: "All players registered!",
+    startGameNow: "Start the Game",
+    qrJoinTitle: "Register Your Info",
+    qrJoinPrivate: "Your info is private — no one else can see it",
+    qrPickTeam: "Which team are you on?",
+    qrPickSlot: "Pick your number in the team",
+    qrSent: "Sent! ✅",
+    qrSentDesc: "Your info reached the organizer — wait for the game to start",
+    qrSlotLoading: "Loading...",
+    qrSessionNotFound: "Invalid registration link",
   },
 };
 
@@ -304,6 +341,19 @@ function WhosWho() {
   const [timerElapsed, setTimerElapsed] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
 
+  // ── QR Registration state ──────────────────────────────────────────
+  const joinSessionIdParam = useRef(new URLSearchParams(window.location.search).get("join")).current;
+  const [joinSession, setJoinSession] = useState(null);
+  const [joinSlots, setJoinSlots] = useState([]);
+  const [joinScreen, setJoinScreen] = useState("pick-team");
+  const [joinSelectedTeam, setJoinSelectedTeam] = useState(null);
+  const [joinSelectedSlot, setJoinSelectedSlot] = useState(null);
+  const [joinForm, setJoinForm] = useState({ name: "", job: "", color: "", food: "", style: "", wish: "", funny: "" });
+  const [joinSubmitting, setJoinSubmitting] = useState(false);
+  const [qrSessionId, setQrSessionId] = useState(null);
+  const [qrImgUrl, setQrImgUrl] = useState(null);
+  const [qrLivePlayers, setQrLivePlayers] = useState([]);
+  const [qrCreating, setQrCreating] = useState(false);
   // Timer: count UP every second when running
   useEffect(() => {
     if (!timerRunning) return;
@@ -323,6 +373,29 @@ function WhosWho() {
 
   function resetTimer() { setTimerElapsed(0); setTimerRunning(true); }
 
+  // ── Join mode: load session + real-time ─────────────────────────
+  useEffect(() => {
+    if (!joinSessionIdParam) return;
+    supabase.from("ww_sessions").select("*").eq("id", joinSessionIdParam).single()
+      .then(({ data }) => { if (data) setJoinSession(data); });
+    supabase.from("ww_players").select("*").eq("session_id", joinSessionIdParam).order("team").order("player_order")
+      .then(({ data }) => { setJoinSlots(data || []); });
+    const sub = supabase.channel("join-" + joinSessionIdParam)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "ww_players", filter: `session_id=eq.${joinSessionIdParam}` },
+        (payload) => setJoinSlots(prev => prev.map(p => p.id === payload.new.id ? payload.new : p)))
+      .subscribe();
+    return () => supabase.removeChannel(sub);
+  }, [joinSessionIdParam]);
+
+  // ── Organizer real-time: watch QR session players ────────────────
+  useEffect(() => {
+    if (!qrSessionId) return;
+    const sub = supabase.channel("qr-org-" + qrSessionId)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "ww_players", filter: `session_id=eq.${qrSessionId}` },
+        (payload) => setQrLivePlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p)))
+      .subscribe();
+    return () => supabase.removeChannel(sub);
+  }, [qrSessionId]);
   // ── BroadcastChannel sync (DeX / multi-window) ───────────────────
   const myBCId = useRef(uid());
   const bcRef = useRef(null);
@@ -361,6 +434,48 @@ function WhosWho() {
     if (bcReceiving.current) return;
     bcRef.current?.postMessage({ from: myBCId.current, type: "sync", state: stateRef.current });
   }, [screen, teamNames, qLabels, openQLabels, counts, queue, qIdx, players, draft, scores, deck, deckIdx, revealed, faceoffOrder, faceoffPairIdx, faceoffLiveQIdx, faceoffShufflesLeft, faceoffQSequence, faceoffUsedQSet, r1UsedCombos, organizer, timerElapsed, timerRunning, lang]);
+
+  // ── QR Registration functions ────────────────────────────────────
+  async function createQRSession() {
+    setQrCreating(true);
+    const sessionId = uid() + uid();
+    await supabase.from("ww_sessions").insert({
+      id: sessionId, team1_name: teamNames[1], team2_name: teamNames[2],
+      team1_count: counts[1], team2_count: counts[2],
+      q_labels: qLabels, open_q_labels: openQLabels, lang, status: "open"
+    });
+    const slots = [];
+    for (let i = 0; i < counts[1]; i++) slots.push({ id: uid(), session_id: sessionId, team: 1, player_order: i });
+    for (let i = 0; i < counts[2]; i++) slots.push({ id: uid(), session_id: sessionId, team: 2, player_order: i });
+    await supabase.from("ww_players").insert(slots);
+    const joinUrl = `${window.location.origin}${window.location.pathname}?join=${sessionId}`;
+    const qrDataUrl = await QRCode.toDataURL(joinUrl, { width: 380, margin: 2, color: { dark: "#12141F", light: "#F2EDE3" } });
+    setQrSessionId(sessionId);
+    setQrImgUrl(qrDataUrl);
+    setQrLivePlayers(slots);
+    setQrCreating(false);
+    setScreen("qr-wait");
+  }
+
+  function startGameFromQR() {
+    const gamePlayers = qrLivePlayers
+      .filter(p => p.name?.trim())
+      .map(p => ({ id: p.id, team: p.team, name: p.name, job: p.job || "", color: p.color || "", food: p.food || "", style: p.style || "", wish: p.wish || "", funny: p.funny || "" }));
+    setPlayers(gamePlayers);
+    setScreen("rounds");
+  }
+
+  async function submitJoinForm() {
+    if (!joinSelectedSlot || !joinForm.name.trim()) return;
+    setJoinSubmitting(true);
+    await supabase.from("ww_players").update({
+      name: joinForm.name, job: joinForm.job, color: joinForm.color,
+      food: joinForm.food, style: joinForm.style, wish: joinForm.wish,
+      funny: joinForm.funny, submitted_at: new Date().toISOString()
+    }).eq("id", joinSelectedSlot.id);
+    setJoinSubmitting(false);
+    setJoinScreen("done");
+  }
 
   // ── Registration flow ────────────────────────────────────────────
   function startRegistration() { setScreen("organizer"); }
@@ -521,6 +636,143 @@ function WhosWho() {
   }
   function continueRegistration() { setScreen("pass"); }
 
+  // ── JOIN MODE: player opened QR link on their phone ──────────────
+  if (joinSessionIdParam) {
+    const jt = joinSession ? (joinSession.lang === "en" ? STR.en : STR.ar) : STR.ar;
+    const jdir = joinSession ? (joinSession.lang === "en" ? "ltr" : "rtl") : "rtl";
+    const t1name = joinSession?.team1_name || STR.ar.defaultTeam1;
+    const t2name = joinSession?.team2_name || STR.ar.defaultTeam2;
+    const t1slots = joinSlots.filter(s => s.team === 1);
+    const t2slots = joinSlots.filter(s => s.team === 2);
+
+    if (!joinSession && joinSlots.length === 0) {
+      return (
+        <div dir={jdir} className="min-h-screen flex flex-col items-center justify-center gap-6" style={{ background: "#12141F", color: "#F2EDE3", fontFamily: "'Tajawal', sans-serif" }}>
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');`}</style>
+          <div className="pulse text-5xl">⏳</div>
+          <div className="text-lg font-bold opacity-60">{jt.qrSlotLoading}</div>
+        </div>
+      );
+    }
+
+    if (joinScreen === "done") {
+      return (
+        <div dir={jdir} className="min-h-screen flex flex-col items-center justify-center gap-6 px-6" style={{ background: "#12141F", color: "#F2EDE3", fontFamily: "'Tajawal', sans-serif" }}>
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');`}</style>
+          <div style={{ fontSize: 80 }}>✅</div>
+          <div className="text-3xl font-black" style={{ color: "#3DB8A8" }}>{jt.qrSent}</div>
+          <div className="text-base font-bold opacity-60 text-center">{joinForm.name}</div>
+          <div className="text-sm opacity-45 text-center leading-relaxed">{jt.qrSentDesc}</div>
+        </div>
+      );
+    }
+
+    if (joinScreen === "form" && joinSelectedSlot) {
+      const slotTeam = joinSelectedSlot.team;
+      const tc = TEAM_META[slotTeam];
+      const ql = joinSession?.q_labels?.[joinSession.lang] || defaultQLabels(joinSession?.lang || "ar");
+      const oql = joinSession?.open_q_labels?.[joinSession.lang] || defaultOpenQLabels(joinSession?.lang || "ar");
+      return (
+        <div dir={jdir} className="min-h-screen flex flex-col px-5 py-8 gap-4" style={{ background: "#12141F", color: "#F2EDE3", fontFamily: "'Tajawal', sans-serif" }}>
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap'); * { box-sizing: border-box; } input { outline: none; } input:focus { box-shadow: 0 0 0 2px ${tc.color}; }`}</style>
+          <button onClick={() => setJoinScreen("pick-slot")} className="self-start px-3 py-2 rounded-xl text-sm font-bold" style={{ background: "#1C1F30" }}>
+            {jdir === "rtl" ? "▶" : "◀"} {jt.back}
+          </button>
+          <div className="text-center">
+            <div className="text-2xl font-black" style={{ color: tc.color }}>{jt.qrJoinTitle}</div>
+            <div className="text-xs opacity-45 mt-1">{jt.qrJoinPrivate}</div>
+          </div>
+          <input placeholder={jt.yourName} value={joinForm.name}
+            onChange={e => setJoinForm(f => ({ ...f, name: e.target.value }))}
+            className="rounded-xl px-4 py-3 font-bold text-lg placeholder-white/25"
+            style={{ background: "#181B2A" }} />
+          <div className="grid grid-cols-2 gap-2">
+            {QUESTIONS.map((q, i) => (
+              <input key={q.key} placeholder={ql[i] || q[joinSession?.lang || "ar"]}
+                value={joinForm[q.key]}
+                onChange={e => setJoinForm(f => ({ ...f, [q.key]: e.target.value }))}
+                className="rounded-xl px-3 py-2.5 text-sm placeholder-white/25"
+                style={{ background: "#181B2A" }} />
+            ))}
+          </div>
+          {OPEN_QUESTIONS.map((q, i) => (
+            <input key={q.key} placeholder={oql[i] || q[joinSession?.lang || "ar"]}
+              value={joinForm[q.key]}
+              onChange={e => setJoinForm(f => ({ ...f, [q.key]: e.target.value }))}
+              className="rounded-xl px-3 py-2.5 text-sm placeholder-white/25"
+              style={{ background: "#181B2A" }} />
+          ))}
+          <button disabled={!joinForm.name.trim() || joinSubmitting} onClick={submitJoinForm}
+            className="w-full py-4 rounded-2xl font-black text-lg mt-2 disabled:opacity-30"
+            style={{ background: tc.color, color: "#12141F" }}>
+            {joinSubmitting ? "⏳" : jt.qrSent.replace(" ✅", "")}
+          </button>
+        </div>
+      );
+    }
+
+    if (joinScreen === "pick-slot" && joinSelectedTeam) {
+      const slots = joinSelectedTeam === 1 ? t1slots : t2slots;
+      const tc = TEAM_META[joinSelectedTeam];
+      const tname = joinSelectedTeam === 1 ? t1name : t2name;
+      return (
+        <div dir={jdir} className="min-h-screen flex flex-col px-5 py-8 gap-6" style={{ background: "#12141F", color: "#F2EDE3", fontFamily: "'Tajawal', sans-serif" }}>
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');`}</style>
+          <button onClick={() => setJoinScreen("pick-team")} className="self-start px-3 py-2 rounded-xl text-sm font-bold" style={{ background: "#1C1F30" }}>
+            {jdir === "rtl" ? "▶" : "◀"} {jt.back}
+          </button>
+          <div className="text-center">
+            <div className="text-xl font-black" style={{ color: tc.color }}>{tname}</div>
+            <div className="text-sm opacity-55 mt-1">{jt.qrPickSlot}</div>
+          </div>
+          <div className="flex flex-col gap-3">
+            {slots.map((slot, i) => {
+              const taken = slot.submitted_at || slot.name?.trim();
+              return (
+                <button key={slot.id} disabled={!!taken}
+                  onClick={() => { setJoinSelectedSlot(slot); setJoinScreen("form"); }}
+                  className="w-full py-4 rounded-2xl font-bold text-lg disabled:opacity-40"
+                  style={{ background: taken ? "#1C1F30" : tc.bg, color: taken ? "#F2EDE3" : tc.color, border: `2px solid ${taken ? "transparent" : tc.color}` }}>
+                  <span className="font-black">#{i + 1}</span>
+                  {taken ? ` — ${jt.qrSlotTaken} ${slot.name ? `(${slot.name})` : ""}` : ` — ${jt.qrSlotEmpty}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // Default: pick-team screen
+    return (
+      <div dir={jdir} className="min-h-screen flex flex-col items-center justify-center px-6 gap-8" style={{ background: "#12141F", color: "#F2EDE3", fontFamily: "'Tajawal', sans-serif" }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');`}</style>
+        <WhosWhoLogo size={56} />
+        <div className="text-center">
+          <div className="text-2xl font-black">{jt.qrPickTeam}</div>
+        </div>
+        <div className="w-full flex flex-col gap-4">
+          {[1, 2].map(team => {
+            const tname = team === 1 ? t1name : t2name;
+            const slots = team === 1 ? t1slots : t2slots;
+            const filled = slots.filter(s => s.submitted_at || s.name?.trim()).length;
+            const tc = TEAM_META[team];
+            return (
+              <button key={team} onClick={() => { setJoinSelectedTeam(team); setJoinScreen("pick-slot"); }}
+                className="w-full py-5 rounded-2xl font-black text-xl"
+                style={{ background: tc.bg, color: tc.color, border: `2px solid ${tc.color}` }}>
+                {tname}
+                <div className="text-sm font-bold mt-1" style={{ opacity: 0.7 }}>
+                  {filled}/{slots.length} {jt.qrSlotTaken.replace("✅ ", "")}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   const currentTeam = (screen === "pass" || screen === "collecting") ? queue[qIdx]?.team : null;
   const triviaOk = players.filter((p) => p.team === 1).length >= 3 && players.filter((p) => p.team === 2).length >= 3;
 
@@ -642,7 +894,12 @@ function WhosWho() {
                 </button>
               </div>
             ) : (
-              <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+              <div className="flex flex-col gap-3">
+                <button onClick={startRegistration} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+                <button onClick={createQRSession} disabled={qrCreating} className="w-full py-3.5 rounded-2xl font-black text-base active:scale-95 disabled:opacity-50" style={{ background: "#181B2A", color: "#3DB8A8", border: "2px solid #3DB8A8" }}>
+                  {qrCreating ? "⏳" : t.qrRegister}
+                </button>
+              </div>
             )}
             <div className="text-center text-xs opacity-45 leading-relaxed">{t.privacyNote}</div>
           </div>
@@ -696,9 +953,110 @@ function WhosWho() {
                   <button onClick={resetRegistration} style={{ flex: 1, padding: "22px 0", borderRadius: 16, fontWeight: 700, fontSize: 24, background: "#1C1F30" }}>{t.startOver}</button>
                 </>
               ) : (
-                <button onClick={startRegistration} style={{ flex: 1, padding: "24px 0", borderRadius: 16, fontWeight: 900, fontSize: 30, background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+                <>
+                  <button onClick={startRegistration} style={{ flex: 1, padding: "24px 0", borderRadius: 16, fontWeight: 900, fontSize: 30, background: "#E8A33D", color: "#12141F" }}>{t.startRegistration}</button>
+                  <button onClick={createQRSession} disabled={qrCreating} style={{ flex: 1, padding: "24px 0", borderRadius: 16, fontWeight: 900, fontSize: 26, background: "#181B2A", color: "#3DB8A8", border: "3px solid #3DB8A8", opacity: qrCreating ? 0.5 : 1 }}>{qrCreating ? "⏳" : t.qrRegister}</button>
+                </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── QR WAIT ── */}
+        {screen === "qr-wait" && !isTV && (
+          <div className="flex-1 flex flex-col px-5 py-6 gap-5">
+            <button onClick={() => setScreen("counts")} className="self-start flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold active:scale-95" style={{ background: "#1C1F30" }}>
+              <span style={{fontSize:13}}>{dir === "rtl" ? "▶" : "◀"}</span> {t.back}
+            </button>
+            <div className="text-center">
+              <div className="text-2xl font-black mb-1" style={{ color: "#E8A33D" }}>{t.qrWaiting}</div>
+              <div className="text-xs opacity-50 leading-relaxed">{t.qrScanInstruct}</div>
+            </div>
+            {qrImgUrl && (
+              <div className="flex justify-center">
+                <img src={qrImgUrl} alt="QR" className="rounded-2xl" style={{ width: 220, height: 220 }} />
+              </div>
+            )}
+            {[1, 2].map(team => {
+              const slots = qrLivePlayers.filter(p => p.team === team);
+              const tc = TEAM_META[team];
+              return (
+                <div key={team} className="rounded-2xl p-4 card-shadow" style={{ background: "#181B2A" }}>
+                  <div className="font-black mb-2" style={{ color: tc.color }}>
+                    {teamNames[team]} — {slots.filter(p => p.submitted_at || p.name?.trim()).length}/{slots.length}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {slots.map((p, i) => {
+                      const done = p.submitted_at || p.name?.trim();
+                      return (
+                        <div key={p.id} className="flex items-center gap-2 text-sm px-3 py-2 rounded-xl" style={{ background: "#12141F" }}>
+                          <span style={{ color: done ? "#3DB8A8" : "#555" }}>{done ? "✅" : "⏳"}</span>
+                          <span className="flex-1 font-bold">{done ? p.name : `${lang === "ar" ? "لاعب" : "Player"} ${i + 1}`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {qrLivePlayers.every(p => p.submitted_at || p.name?.trim()) && qrLivePlayers.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                <div className="text-center text-sm font-bold" style={{ color: "#3DB8A8" }}>{t.qrAllDone}</div>
+                <button onClick={startGameFromQR} className="w-full py-4 rounded-2xl font-black text-lg active:scale-95" style={{ background: "#3DB8A8", color: "#12141F" }}>{t.startGameNow}</button>
+              </div>
+            ) : (
+              <div className="text-center text-xs opacity-40 leading-relaxed pulse">{lang === "ar" ? "ينتظر تسجيل اللاعبين..." : "Waiting for players to register..."}</div>
+            )}
+          </div>
+        )}
+
+        {/* ── QR WAIT TV ── */}
+        {screen === "qr-wait" && isTV && (
+          <div className="tv-screen" style={{ padding: "28px 64px", gap: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <WhosWhoLogo size={44} />
+              <div style={{ fontSize: 36, fontWeight: 900, color: "#E8A33D" }}>{t.qrWaiting}</div>
+              <button onClick={() => setScreen("counts")} style={{ background: "#1C1F30", padding: "10px 24px", borderRadius: 12, fontWeight: 700, fontSize: 18 }}>{t.back}</button>
+            </div>
+            <div style={{ flex: 1, display: "flex", gap: 48, minHeight: 0 }}>
+              {qrImgUrl && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+                  <img src={qrImgUrl} alt="QR" style={{ width: 280, height: 280, borderRadius: 24 }} />
+                  <div style={{ fontSize: 20, opacity: 0.55, textAlign: "center", maxWidth: 280 }}>{t.qrScanInstruct}</div>
+                </div>
+              )}
+              <div style={{ flex: 1, display: "flex", gap: 32, minWidth: 0 }}>
+                {[1, 2].map(team => {
+                  const slots = qrLivePlayers.filter(p => p.team === team);
+                  const tc = TEAM_META[team];
+                  const doneCount = slots.filter(p => p.submitted_at || p.name?.trim()).length;
+                  return (
+                    <div key={team} className="tv-card" style={{ flex: 1, padding: "32px 40px", display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: tc.color }}>{teamNames[team]} — {doneCount}/{slots.length}</div>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
+                        {slots.map((p, i) => {
+                          const done = p.submitted_at || p.name?.trim();
+                          return (
+                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 16, background: "#12141F", borderRadius: 16, padding: "16px 24px" }}>
+                              <span style={{ fontSize: 28, color: done ? "#3DB8A8" : "#444" }}>{done ? "✅" : "⏳"}</span>
+                              <span style={{ fontSize: 26, fontWeight: 700, flex: 1 }}>{done ? p.name : `${lang === "ar" ? "لاعب" : "Player"} ${i + 1}`}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {qrLivePlayers.every(p => p.submitted_at || p.name?.trim()) && qrLivePlayers.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ textAlign: "center", fontSize: 26, fontWeight: 900, color: "#3DB8A8" }}>{t.qrAllDone}</div>
+                <button onClick={startGameFromQR} style={{ padding: "22px 0", borderRadius: 16, fontWeight: 900, fontSize: 30, background: "#3DB8A8", color: "#12141F" }}>{t.startGameNow}</button>
+              </div>
+            ) : (
+              <div className="pulse" style={{ textAlign: "center", fontSize: 22, opacity: 0.45 }}>{lang === "ar" ? "ينتظر تسجيل اللاعبين..." : "Waiting for players to register..."}</div>
+            )}
           </div>
         )}
 
