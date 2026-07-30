@@ -354,7 +354,6 @@ function WhosWho() {
   const [qrImgUrl, setQrImgUrl] = useState(null);
   const [qrLivePlayers, setQrLivePlayers] = useState([]);
   const [qrCreating, setQrCreating] = useState(false);
-
   // Timer: count UP every second when running
   useEffect(() => {
     if (!timerRunning) return;
@@ -397,7 +396,6 @@ function WhosWho() {
       .subscribe();
     return () => supabase.removeChannel(sub);
   }, [qrSessionId]);
-
   // ── BroadcastChannel sync (DeX / multi-window) ───────────────────
   const myBCId = useRef(uid());
   const bcRef = useRef(null);
